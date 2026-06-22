@@ -10,9 +10,13 @@ Route::post('/login', [AuthController::class, 'login']);
 
 // Endpoint accessible only for authenticated users
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
     
-    Route::post('/logout', [AuthController::class, 'logout']);
+    // Transaction routes
+    Route::get('/transactions', [\App\Http\Controllers\Api\TransactionController::class, 'index']);
+    Route::post('/transactions', [\App\Http\Controllers\Api\TransactionController::class, 'store']);
+    Route::delete('/transactions/{id}', [\App\Http\Controllers\Api\TransactionController::class, 'destroy']);
 });
