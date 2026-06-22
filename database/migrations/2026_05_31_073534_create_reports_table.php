@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('reports', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->date('start_date');
+            $table->date('end_date');
+            $table->enum('format', ['pdf', 'excel']);
+            $table->string('file_path'); // reports file location on the server
             $table->timestamps();
         });
     }
