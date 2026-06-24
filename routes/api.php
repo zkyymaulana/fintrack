@@ -14,13 +14,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
-    
+
     //Category routes
     Route::get('/categories', [\App\Http\Controllers\Api\CategoryController::class, 'index']);
     
     // Transaction routes
     Route::get('/transactions', [\App\Http\Controllers\Api\TransactionController::class, 'index']);
     Route::post('/transactions', [\App\Http\Controllers\Api\TransactionController::class, 'store']);
+    Route::put('/transactions/{id}', [\App\Http\Controllers\Api\TransactionController::class, 'update']);
     Route::delete('/transactions/{id}', [\App\Http\Controllers\Api\TransactionController::class, 'destroy']);
 
+    // Budget routes
+    Route::get('/budgets', [\App\Http\Controllers\Api\BudgetController::class, 'index']);
+    Route::post('/budgets', [\App\Http\Controllers\Api\BudgetController::class, 'store']);
 });

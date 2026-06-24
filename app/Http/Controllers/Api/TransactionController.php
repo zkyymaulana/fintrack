@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -72,7 +73,24 @@ class TransactionController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $transaction = Transaction::find($id);
+
+        if(!$transaction) {
+            return response()->json(['success' => false, 'message' => 'Transaction not found'], 404);
+        }
+
+        $validatedData = $request->validate([
+            'category_id'        => 'sometimes|exists:categories,id',
+            'amount'             => 'sometimes|numeric|min:0',
+            'type'               => 'sometimes|in:income,expense',
+            'date'               => 'sometimes|date',
+            'note'               => 'nullable|string',
+            'is_ocr'             => 'nullable|boolean',
+            'receipt_image'      => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
+
+        $transaction->update($validatedData);
+        return response()->json(['success' => true, 'message' => 'Transaction updated successfully', 'data' => $transaction], 200);
     }
 
     /**
