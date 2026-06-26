@@ -1,6 +1,12 @@
 <?php
 
+use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BudgetController;
+use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\TransactionController;
+use App\Http\Controllers\Api\WalletController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -14,17 +20,30 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+    Route::post('/profile/update', [ProfileController::class, 'update']);
 
     //Category routes
-    Route::get('/categories', [\App\Http\Controllers\Api\CategoryController::class, 'index']);
+    Route::get('/categories', [CategoryController::class, 'index']);
     
     // Transaction routes
-    Route::get('/transactions', [\App\Http\Controllers\Api\TransactionController::class, 'index']);
-    Route::post('/transactions', [\App\Http\Controllers\Api\TransactionController::class, 'store']);
-    Route::put('/transactions/{id}', [\App\Http\Controllers\Api\TransactionController::class, 'update']);
-    Route::delete('/transactions/{id}', [\App\Http\Controllers\Api\TransactionController::class, 'destroy']);
+    Route::get('/transactions', [TransactionController::class, 'index']);
+    Route::post('/transactions', [TransactionController::class, 'store']);
+    Route::put('/transactions/{id}', [TransactionController::class, 'update']);
+    Route::delete('/transactions/{id}', [TransactionController::class, 'destroy']);
 
     // Budget routes
-    Route::get('/budgets', [\App\Http\Controllers\Api\BudgetController::class, 'index']);
-    Route::post('/budgets', [\App\Http\Controllers\Api\BudgetController::class, 'store']);
+    Route::get('/budgets', [BudgetController::class, 'index']);
+    Route::post('/budgets', [BudgetController::class, 'store']);
+
+    // Wallet routes
+    Route::get('/wallets', [WalletController::class, 'index']);
+    Route::post('/wallets', [WalletController::class, 'store']);
+    Route::put('/wallets/{id}', [WalletController::class, 'update']);
+    Route::delete('/wallets/{id}', [WalletController::class, 'destroy']);
+
+    // Analytics routes
+    Route::get('/analytics/monthly', [AnalyticsController::class, 'getMonthlySummary']);
+
+    // Scan transactions route
+    Route::post('/transactions/scan', [TransactionController::class, 'scan']);
 });
