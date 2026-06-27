@@ -46,4 +46,29 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Scan transactions route
     Route::post('/transactions/scan', [TransactionController::class, 'scan']);
+
+    Route::post('/update-fcm-token', [AuthController::class, 'updateFcmToken']);
+
+    Route::get('/set-test-token', function () {
+    \App\Models\User::find(1)->update([
+        'fcm_token' => 'eg9kzz3FTNmj-Ge73bF8U-:APA91bHmYAr9_IweIOWrxH9OmAwsKnMosKUYBhY1WZRO1inphgDWlX3hRhwBiuUM9nQMNRsCHu7k9bcs1ttaABtHwkTUZufeafqqn2lSfpAVi2UajT6aO84'
+    ]);
+    return response()->json(['message' => 'Token saved']);
+    });
+
+    Route::get('/test-notif', function () {
+    $user = \App\Models\User::find(1);
+    
+    if (!$user->fcm_token) {
+        return response()->json(['error' => 'FCM token not found']);
+    }
+
+    \App\Http\Controllers\Api\AuthController::sendNotification(
+        $user->fcm_token,
+        '🔔 Test Notifikasi',
+        'Halo dari FinTrack! Notifikasi berhasil.'
+    );
+
+    return response()->json(['message' => 'Notifikasi terkirim!']);
+});
 });

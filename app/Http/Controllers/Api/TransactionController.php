@@ -93,6 +93,8 @@ class TransactionController extends Controller
                 }
             }
         }
+        
+        BudgetController::checkBudgetAndNotify($request);
 
         return response()->json(['message' => 'Transaction created successfully', 'data' => $transaction->load('category') // load the category in the response
         ], 201);

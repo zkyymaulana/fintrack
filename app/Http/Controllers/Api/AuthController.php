@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Kreait\Firebase\Contract\Messaging;
+use Kreait\Firebase\Messaging\CloudMessage;
+use Kreait\Firebase\Messaging\Notification;
 
 class AuthController extends Controller
 {
@@ -61,6 +64,16 @@ class AuthController extends Controller
             'user' => $user,
         ]);
     }
+
+    public static function sendNotification(string $fcmToken, string $title, string $body): void
+{
+    $messaging = app(Messaging::class);
+
+    $message = CloudMessage::withTarget('token', $fcmToken)
+        ->withNotification(Notification::create($title, $body));
+
+    $messaging->send($message);
+}
 
     // function for user logout
     public function logout(Request $request){
