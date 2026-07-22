@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\WalletController;
@@ -13,6 +14,12 @@ use Illuminate\Support\Facades\Route;
 // Endpoint publicly accessible for user registration and login
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
+// Route for sending OTP to user's email for password reset
+Route::post('/forgot-password', [PasswordResetController::class, 'sendOtp']);
+
+// Route for resetting password using OTP, accessible without authentication
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
 
 // Endpoint accessible only for authenticated users
 Route::middleware('auth:sanctum')->group(function () {

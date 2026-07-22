@@ -15,18 +15,24 @@ class CategorySeeder extends Seeder
     {
         $categories = [
             // Pemasukan
-            ['name' => 'Salary', 'icon' => 'payments', 'type' => 'income'],
-            ['name' => 'Investment', 'icon' => 'trending_up', 'type' => 'income'],
+            ['name' => 'Gaji', 'icon' => 'payments', 'type' => 'income'],
+            ['name' => 'Uang Saku', 'icon' => 'account_balance_wallet', 'type' => 'income'],
+            ['name' => 'Lainnya', 'icon' => 'add_circle_outline', 'type' => 'income'],
+            ['name' => 'Pindah Akun', 'icon' => 'swap_horiz', 'type' => 'income'],
             
             // Pengeluaran
-            ['name' => 'Food & Dining', 'icon' => 'restaurant', 'type' => 'expense'],
-            ['name' => 'Transportation', 'icon' => 'directions_car', 'type' => 'expense'],
-            ['name' => 'Shopping', 'icon' => 'shopping_bag', 'type' => 'expense'],
-            ['name' => 'Housing', 'icon' => 'home', 'type' => 'expense'],
+            ['name' => 'Wajib', 'icon' => 'priority_high', 'type' => 'expense'],
+            ['name' => 'Gaya Hidup', 'icon' => 'style', 'type' => 'expense'],
+            ['name' => 'Fleksibel', 'icon' => 'tune', 'type' => 'expense'],
+            ['name' => 'Lainnya', 'icon' => 'more_horiz', 'type' => 'expense'],
+            ['name' => 'Pindah Akun', 'icon' => 'swap_horiz', 'type' => 'expense'],
         ];
 
         foreach ($categories as $category) {
-            Category::create($category);
+            Category::firstOrCreate(
+                ['name' => $category['name'], 'type' => $category['type']],
+                ['icon' => $category['icon']]
+            );
         }
     }
 }

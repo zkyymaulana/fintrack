@@ -15,8 +15,8 @@ class TransactionController extends Controller
      */
     public function index(Request $request)
     {
-        // Retrieve transactions for the authenticated user, including category information
-        $transactions = $request->user()->transactions()->with('category')->latest()->get()->map(function ($transaction) {
+        // Retrieve transactions for the authenticated user, including category information ordered by transaction date
+        $transactions = $request->user()->transactions()->with('category')->orderBy('date', 'desc')->orderBy('created_at', 'desc')->get()->map(function ($transaction) {
             $transaction->total_amount = $transaction->amount + $transaction->admin_fee;
             return $transaction;
         });
