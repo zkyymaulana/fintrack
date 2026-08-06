@@ -16,25 +16,68 @@ class BudgetController extends Controller
      */
     public function index(Request $request)
     {
-        $budgets = $request->user()->budgets()->with('category')->get();
+        $targetMonth = null;
+        $targetYear = null;
 
-        $budgets = $budgets->map(function ($budget) use ($request) {
-            list ($month, $year) = explode('-', $budget->month_year);
+        // Tangkap parameter query filter jika ada (contoh: ?month=8&year=2026 atau ?month_year=08-2026)
+        if ($request->filled('month_year')) {
+            $monthYear = trim($request->query('month_year'));
+            if (preg_match('/^(\d{1,2})-(\d{4})$/', $monthYear, $matches)) {
+                $targetMonth = (int) $matches[1];
+                $targetYear = (int) $matches[2];
+            } elseif (preg_match('/^(\d{4})-(\d{1,2})$/', $monthYear, $matches)) {
+                $targetYear = (int) $matches[1];
+                $targetMonth = (int) $matches[2];
+            }
+        }
+
+        if (!$targetMonth && $request->filled('month')) {
+            $targetMonth = (int) $request->query('month');
+        }
+
+        if (!$targetYear && $request->filled('year')) {
+            $targetYear = (int) $request->query('year');
+        }
+
+        $now = now();
+        if (!$targetMonth || $targetMonth < 1 || $targetMonth > 12) {
+            $targetMonth = (int) $now->format('m');
+        }
+
+        if (!$targetYear || $targetYear < 1000 || $targetYear > 9999) {
+            $targetYear = (int) $now->format('Y');
+        }
+
+        $targetMonthYearStr = sprintf('%02d-%04d', $targetMonth, $targetYear);
+
+        // Ambil semua data budget user, terurut dari yang terbaru
+        $allBudgets = $request->user()->budgets()
+            ->with('category')
+            ->orderBy('id', 'desc')
+            ->get();
+
+        // Kelompokkan berdasarkan category_id
+        // Tiap kategori mempertahankan limit_amount terbaru,
+        // namun actual_spend dihitung khusus dari transaksi pada target bulan & tahun.
+        $budgets = $allBudgets->groupBy('category_id')->map(function ($categoryBudgets) use ($targetMonthYearStr, $request, $targetMonth, $targetYear) {
+            $budget = $categoryBudgets->firstWhere('month_year', $targetMonthYearStr) ?? $categoryBudgets->first();
 
             $actualSpend = $request->user()->transactions()
                 ->where('category_id', $budget->category_id)
-                ->whereMonth('date', $month)
-                ->whereYear('date', $year)
+                ->whereMonth('date', $targetMonth)
+                ->whereYear('date', $targetYear)
                 ->where('type', 'expense')
                 ->get()
                 ->sum(function ($transaction) {
-                    return $transaction->amount + $transaction->admin_fee;
+                    return (float) ($transaction->amount + $transaction->admin_fee);
                 });
-            $budget->actual_spend = $actualSpend; 
-            $budget->remaining_budget = $budget->limit_amount - $actualSpend;
+
+            $budget->actual_spend = (float) $actualSpend;
+            $budget->remaining_budget = (float) ($budget->limit_amount - $actualSpend);
 
             return $budget;
-        });      
+        })->values();
+
         return response()->json([
             'success' => true,
             'message' => 'Budgets retrieved successfully',
@@ -71,81 +114,83 @@ class BudgetController extends Controller
     }
 
     public static function checkBudgetAndNotify(Request $request): void
-{
-    $user     = $request->user();
-    $fcmToken = $user->fcm_token;
+    {
+        $user     = $request->user();
+        $fcmToken = $user->fcm_token;
 
-    if (!$fcmToken) return;
+        if (!$fcmToken) return;
 
-    $now   = now();
-    $month = $now->format('m');
-    $year  = $now->format('Y');
+        $now   = now();
+        $month = (int) $now->format('m');
+        $year  = (int) $now->format('Y');
+        $monthYearStr = sprintf('%02d-%04d', $month, $year);
 
-    $budgets = $user->budgets()->with('category')
-        ->where('month_year', $month . '-' . $year)
-        ->get();
+        $allBudgets = $user->budgets()->with('category')->orderBy('id', 'desc')->get();
+        $budgets = $allBudgets->groupBy('category_id')->map(function ($categoryBudgets) use ($monthYearStr) {
+            return $categoryBudgets->firstWhere('month_year', $monthYearStr) ?? $categoryBudgets->first();
+        })->values();
 
-    foreach ($budgets as $budget) {
-        $actualSpend = $user->transactions()
-            ->where('category_id', $budget->category_id)
+        foreach ($budgets as $budget) {
+            $actualSpend = $user->transactions()
+                ->where('category_id', $budget->category_id)
+                ->whereMonth('date', $month)
+                ->whereYear('date', $year)
+                ->where('type', 'expense')
+                ->get()
+                ->sum(fn($t) => (float) ($t->amount + $t->admin_fee));
+
+            $percentage   = $budget->limit_amount > 0
+                ? ($actualSpend / $budget->limit_amount) * 100
+                : 0;
+
+            $categoryName = $budget->category->name ?? 'General';
+            $percentRound = round($percentage);
+            $remaining    = number_format(max($budget->limit_amount - $actualSpend, 0), 0, ',', '.');
+            $over         = number_format(max($actualSpend - $budget->limit_amount, 0), 0, ',', '.');
+
+            // ⚠️ Approaching budget limit (80% - 99%)
+            if ($percentage >= 80 && $percentage < 100) {
+                self::sendFcmNotification(
+                    $fcmToken,
+                    $categoryName . ' Budget Alert',
+                    $percentRound . '% of your ' . $categoryName . ' budget has been used. Rp' . $remaining . ' remaining.'
+                );
+            }
+
+            // 🚨 Budget exceeded (>= 100%)
+            if ($percentage >= 100) {
+                self::sendFcmNotification(
+                    $fcmToken,
+                    $categoryName . ' Budget Exceeded',
+                    'Your ' . $categoryName . ' spending has exceeded the budget limit by Rp' . $over . ' this month.'
+                );
+            }
+        }
+
+        // 📊 Expense vs Income check
+        $totalExpense = $user->transactions()
             ->whereMonth('date', $month)
             ->whereYear('date', $year)
             ->where('type', 'expense')
             ->get()
-            ->sum(fn($t) => $t->amount + $t->admin_fee);
+            ->sum(fn($t) => (float) ($t->amount + $t->admin_fee));
 
-        $percentage   = $budget->limit_amount > 0
-            ? ($actualSpend / $budget->limit_amount) * 100
-            : 0;
+        $totalIncome = $user->transactions()
+            ->whereMonth('date', $month)
+            ->whereYear('date', $year)
+            ->where('type', 'income')
+            ->get()
+            ->sum(fn($t) => (float) ($t->amount + $t->admin_fee));
 
-        $categoryName = $budget->category->name ?? 'General';
-        $percentRound = round($percentage);
-        $remaining    = number_format(max($budget->limit_amount - $actualSpend, 0), 0, ',', '.');
-        $over         = number_format(max($actualSpend - $budget->limit_amount, 0), 0, ',', '.');
-
-        // ⚠️ Approaching budget limit (80% - 99%)
-        if ($percentage >= 80 && $percentage < 100) {
+        if ($totalExpense > $totalIncome && $totalIncome > 0) {
+            $deficit = number_format($totalExpense - $totalIncome, 0, ',', '.');
             self::sendFcmNotification(
                 $fcmToken,
-                $categoryName . ' Budget Alert',
-                $percentRound . '% of your ' . $categoryName . ' budget has been used. Rp' . $remaining . ' remaining.'
-            );
-        }
-
-        // 🚨 Budget exceeded (>= 100%)
-        if ($percentage >= 100) {
-            self::sendFcmNotification(
-                $fcmToken,
-                $categoryName . ' Budget Exceeded',
-                'Your ' . $categoryName . ' spending has exceeded the budget limit by Rp' . $over . ' this month.'
+                'Spending Exceeds Income',
+                'Your expenses exceed your income by Rp' . $deficit . ' this month. Consider reviewing your spending.'
             );
         }
     }
-
-    // 📊 Expense vs Income check
-    $totalExpense = $user->transactions()
-        ->whereMonth('date', $month)
-        ->whereYear('date', $year)
-        ->where('type', 'expense')
-        ->get()
-        ->sum(fn($t) => $t->amount + $t->admin_fee);
-
-    $totalIncome = $user->transactions()
-        ->whereMonth('date', $month)
-        ->whereYear('date', $year)
-        ->where('type', 'income')
-        ->get()
-        ->sum(fn($t) => $t->amount + $t->admin_fee);
-
-    if ($totalExpense > $totalIncome && $totalIncome > 0) {
-        $deficit = number_format($totalExpense - $totalIncome, 0, ',', '.');
-        self::sendFcmNotification(
-            $fcmToken,
-            'Spending Exceeds Income',
-            'Your expenses exceed your income by Rp' . $deficit . ' this month. Consider reviewing your spending.'
-        );
-    }
-}
 
     /**
      * Helper kirim notifikasi via FCM V1

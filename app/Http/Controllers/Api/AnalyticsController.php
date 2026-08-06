@@ -10,23 +10,49 @@ class AnalyticsController extends Controller
 {
     public function getMonthlySummary(Request $request)
     {
-        // Get the current month and year
-        $currentMonth = Carbon::now()->month;
-        $currentYear = Carbon::now()->year;
+        $month = $request->query('month');
+        $year = $request->query('year');
 
-        // Retrieve transactions for the authenticated user for the current month and year
+        // Handle optional month_year query parameter (e.g., ?month_year=2026-08)
+        if ($request->filled('month_year')) {
+            $monthYear = trim($request->query('month_year'));
+            if (preg_match('/^(\d{4})-(\d{1,2})$/', $monthYear, $matches)) {
+                $year = (int) $matches[1];
+                $month = (int) $matches[2];
+            } elseif (preg_match('/^(\d{1,2})-(\d{4})$/', $monthYear, $matches)) {
+                $month = (int) $matches[1];
+                $year = (int) $matches[2];
+            }
+        }
+
+        $month = $month !== null ? (int) $month : null;
+        $year = $year !== null ? (int) $year : null;
+
+        $now = Carbon::now();
+
+        if (!$month || $month < 1 || $month > 12) {
+            $month = (int) $now->month;
+        }
+
+        if (!$year || $year < 1000 || $year > 9999) {
+            $year = (int) $now->year;
+        }
+
+        $period = Carbon::createFromDate($year, $month, 1)->format('F Y');
+
+        // Retrieve transactions for the authenticated user for specified month and year
         $transactions = $request->user()->transactions()
             ->with('category')
-            ->whereMonth('date', $currentMonth)
-            ->whereYear('date', $currentYear)
+            ->whereMonth('date', $month)
+            ->whereYear('date', $year)
             ->get();
 
         $totalIncome = 0;
         $totalExpense = 0;
 
         foreach ($transactions as $tx) {
-            $totalAmount = $tx->amount + $tx->admin_fee;
-            
+            $totalAmount = (float) ($tx->amount + $tx->admin_fee);
+
             if ($tx->type === 'income') {
                 $totalIncome += $totalAmount;
             } elseif ($tx->type === 'expense') {
@@ -36,38 +62,34 @@ class AnalyticsController extends Controller
 
         // Group expenses by category
         $expenseTransactions = $transactions->where('type', 'expense');
-        
+
         $expenseByCategory = $expenseTransactions->groupBy(function ($tx) {
             return $tx->category ? $tx->category->name : 'Uncategorized';
-        })->map(function ($group) {
-            return $group->sum(function ($tx) {
-                return $tx->amount + $tx->admin_fee;
+        })->map(function ($group, $categoryName) {
+            $sum = $group->sum(function ($tx) {
+                return (float) ($tx->amount + $tx->admin_fee);
             });
-        });
 
-        // format data to make it easier to read in the response
-        $categoryBreakdown = [];
-        foreach ($expenseByCategory as $categoryName => $total) {
-            $categoryBreakdown[] = [
+            return [
                 'category' => $categoryName,
-                'total'    => $total
+                'total'    => (float) $sum,
             ];
-        }
+        })->values()->all();
 
         return response()->json([
             'success' => true,
-            'message' => 'Analytics retrieved successfully',
+            'message' => 'Monthly analytics fetched successfully',
             'data' => [
-                'period' => Carbon::now()->format('F Y'), // Example: "June 2026"
+                'period' => $period,
                 'summary' => [
-                    'income'  => $totalIncome,
-                    'expense' => $totalExpense,
-                    'total_spend' => $totalExpense,
-                    'balance' => $totalIncome - $totalExpense,
+                    'income'      => (float) $totalIncome,
+                    'expense'     => (float) $totalExpense,
+                    'total_spend' => (float) $totalExpense,
+                    'balance'     => (float) ($totalIncome - $totalExpense),
                 ],
-                'expense_by_category' => $categoryBreakdown
-            ]
+                'expense_by_category' => $expenseByCategory,
+            ],
         ], 200);
-
-    }   
+    }
 }
+
