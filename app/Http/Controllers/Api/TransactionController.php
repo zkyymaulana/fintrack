@@ -314,4 +314,82 @@ Jangan tambahkan teks apa pun selain JSON.'
         'error'   => $response->json()
     ], 500);
 }
+
+    public function scanVoice(Request $request)
+{
+    // 1. Validasi file audio (menerima mp3, m4a, wav)
+    $request->validate([
+        'audio_file' => 'required|file|mimes:mp3,wav,m4a,mp4|max:10240', // Maksimal 10MB
+    ]);
+
+    $audio = $request->file('audio_file');
+    $base64Audio = base64_encode(file_get_contents($audio->path()));
+    $mimeType = $audio->getMimeType();
+
+    // Jaring pengaman: Jika Flutter mengirim 'application/octet-stream'
+    if ($mimeType === 'application/octet-stream') {
+        $extension = $audio->getClientOriginalExtension();
+        // Ubah fallback ini menjadi audio murni
+        $mimeType = ($extension === 'wav') ? 'audio/wav' : 'audio/mpeg'; 
+    }
+
+    $apiKey = env('GEMINI_API_KEY');
+    // Menggunakan model gemini-2.5-flash sesuai kodemu sebelumnya
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}";
+
+    // 2. Kirim ke Gemini dengan Prompt Khusus Audio
+    $response = Http::post($url, [
+        'contents' => [
+            [
+                'parts' => [
+                    [
+                        'text' => 'Dengarkan rekaman suara ini yang berisi perintah pencatatan transaksi keuangan. Ekstrak informasi berikut dan kembalikan HANYA dalam format JSON yang valid:
+                        - "title": Nama barang/transaksi secara singkat
+                        - "amount": nominal uang (number murni tanpa desimal atau simbol)
+                        - "type": tentukan apakah ini "expense" (pengeluaran) atau "income" (pemasukan)
+                        - "payment_method": Tebak metode pembayaran (contoh: "BCA", "Cash", "Dana")
+                        - "note": Catatan tambahan jika disebutkan, atau null
+                        Jangan tambahkan teks apa pun selain JSON.'
+                    ],
+                    [
+                        'inlineData' => [
+                            'mimeType' => $mimeType,
+                            'data'     => $base64Audio
+                        ]
+                    ]
+                ]
+            ]
+        ]
+    ]);
+
+    // 3. Olah Respons dari Gemini
+    if ($response->successful()) {
+        $geminiData = $response->json();
+        $extractedText = $geminiData['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
+        
+        // Bersihkan formatting markdown JSON bawaan Gemini
+        $cleanText = preg_replace('/```json|```/', '', $extractedText);
+        $parsedData = json_decode(trim($cleanText), true);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Voice note berhasil diproses',
+            'data'    => [
+                'title'          => $parsedData['title'] ?? 'Transaksi Suara',
+                'amount'         => floatval($parsedData['amount'] ?? 0),
+                'type'           => $parsedData['type'] ?? 'expense',
+                'payment_method' => $parsedData['payment_method'] ?? 'Cash',
+                'note'           => $parsedData['note'] ?? null,
+                'date'           => now()->format('Y-m-d'), // Setelan default hari ini
+                'is_ocr'         => false // Bisa buat flag baru misal 'is_voice' => true jika tabel mendukung
+            ]
+        ], 200);
+    }
+
+    return response()->json([
+        'success' => false,
+        'message' => 'Gagal memproses suara',
+        'error'   => $response->json()
+    ], 500);
+}
 }
