@@ -74,4 +74,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Wallet::class);
     }
+
+    public function chatMessages()
+    {
+        return $this->hasMany(ChatMessage::class);
+    }
 }
