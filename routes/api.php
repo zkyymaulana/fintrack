@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ChatbotController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\ProfileController;
@@ -65,6 +66,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Export routes (PDF & Excel)
     Route::get('/export/pdf', [ExportController::class, 'exportPDF']);
     Route::get('/export/excel', [ExportController::class, 'exportExcel']);
+
+    // AI Financial Chatbot routes
+    Route::get('/chatbot/history', [ChatbotController::class, 'getHistory']);
+    Route::delete('/chatbot/history', [ChatbotController::class, 'clearHistory']);
+    Route::post('/chat', [ChatbotController::class, 'ask']);
+    Route::post('/chatbot/ask', [ChatbotController::class, 'ask']);
 
     // Scan transactions route
     Route::post('/transactions/scan', [TransactionController::class, 'scan']);
