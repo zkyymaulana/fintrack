@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Budget;
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Kreait\Firebase\Contract\Messaging;
 use Kreait\Firebase\Messaging\CloudMessage;
@@ -60,7 +61,10 @@ class BudgetController extends Controller
         // Tiap kategori mempertahankan limit_amount terbaru,
         // namun actual_spend dihitung khusus dari transaksi pada target bulan & tahun.
         $budgets = $allBudgets->groupBy('category_id')->map(function ($categoryBudgets) use ($targetMonthYearStr, $request, $targetMonth, $targetYear) {
-            $budget = $categoryBudgets->firstWhere('month_year', $targetMonthYearStr) ?? $categoryBudgets->first();
+            $budget = $categoryBudgets->firstWhere('month_year', $targetMonthYearStr);
+            if (!$budget) {
+                $budget = clone $categoryBudgets->first();
+            }
 
             $actualSpend = $request->user()->transactions()
                 ->where('category_id', $budget->category_id)
@@ -69,11 +73,12 @@ class BudgetController extends Controller
                 ->where('type', 'expense')
                 ->get()
                 ->sum(function ($transaction) {
-                    return (float) ($transaction->amount + $transaction->admin_fee);
+                    return (float) ($transaction->amount + ($transaction->admin_fee ?? 0));
                 });
 
             $budget->actual_spend = (float) $actualSpend;
             $budget->remaining_budget = (float) ($budget->limit_amount - $actualSpend);
+            $budget->month_year = $targetMonthYearStr;
 
             return $budget;
         })->values();
@@ -81,7 +86,10 @@ class BudgetController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Budgets retrieved successfully',
-            'data' => $budgets
+            'period'  => $targetMonthYearStr,
+            'month'   => $targetMonth,
+            'year'    => $targetYear,
+            'data'    => $budgets
         ], 200);
     }
 
@@ -223,14 +231,87 @@ class BudgetController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $budget = $request->user()->budgets()->with('category')->find($id);
+
+        if (!$budget) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Budget not found',
+            ], 404);
+        }
+
+        $validatedData = $request->validate([
+            'name'         => 'required|string|max:255',
+            'limit_amount' => 'required|numeric|min:0',
+        ]);
+
+        $budget->limit_amount = $validatedData['limit_amount'];
+
+        $newName = trim($validatedData['name']);
+        $currentName = trim($budget->category->name ?? '');
+
+        // Cek jika name berbeda dengan nama kategori saat ini
+        if (strcasecmp($newName, $currentName) !== 0) {
+            $oldCategoryId = $budget->category_id;
+
+            // a. Gunakan Category::firstOrCreate() untuk membuat/mencari kategori dengan nama yang baru
+            $category = Category::firstOrCreate(
+                ['name' => $newName, 'type' => 'expense'],
+                ['icon' => $budget->category->icon ?? null]
+            );
+
+            // b. Ubah category_id pada budget ini ke ID kategori yang baru
+            $budget->category_id = $category->id;
+
+            // c. Pindahkan (update) category_id pada tabel transactions dari ID lama ke ID baru
+            // HANYA untuk transaksi milik user di bulan dan tahun budget ini
+            $targetMonth = null;
+            $targetYear = null;
+            if (preg_match('/^(\d{1,2})-(\d{4})$/', $budget->month_year, $matches)) {
+                $targetMonth = (int) $matches[1];
+                $targetYear = (int) $matches[2];
+            } elseif (preg_match('/^(\d{4})-(\d{1,2})$/', $budget->month_year, $matches)) {
+                $targetYear = (int) $matches[1];
+                $targetMonth = (int) $matches[2];
+            }
+
+            if ($targetMonth && $targetYear && $oldCategoryId) {
+                $request->user()->transactions()
+                    ->where('category_id', $oldCategoryId)
+                    ->whereMonth('date', $targetMonth)
+                    ->whereYear('date', $targetYear)
+                    ->update(['category_id' => $category->id]);
+            }
+        }
+
+        $budget->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Budget updated successfully',
+            'data'    => $budget->load('category'),
+        ], 200);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
-        //
+        $budget = $request->user()->budgets()->find($id);
+
+        if (!$budget) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Budget not found',
+            ], 404);
+        }
+
+        $budget->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Budget deleted successfully',
+        ], 200);
     }
 }

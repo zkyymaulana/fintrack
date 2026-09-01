@@ -100,3 +100,185 @@ test('budget limit carries over to new month while spent resets to zero', functi
             ],
         ]);
 });
+
+test('budgets endpoint defaults to current month and year when no parameters provided', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $category = Category::create(['name' => 'Transport', 'type' => 'expense']);
+    $now = now();
+    $currentMonthYear = sprintf('%02d-%04d', $now->month, $now->year);
+
+    Budget::create([
+        'user_id'      => $user->id,
+        'category_id'  => $category->id,
+        'limit_amount' => 500000,
+        'month_year'   => '01-2020',
+    ]);
+
+    $response = $this->getJson('/api/budgets');
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'success' => true,
+            'period'  => $currentMonthYear,
+            'month'   => (int) $now->month,
+            'year'    => (int) $now->year,
+            'data'    => [
+                [
+                    'category_id'  => $category->id,
+                    'limit_amount' => 500000,
+                    'actual_spend' => 0,
+                    'month_year'   => $currentMonthYear,
+                ]
+            ]
+        ]);
+});
+
+test('user can update budget limit and rename category safely migrating transactions of that month only', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $wallet = Wallet::create(['user_id' => $user->id, 'name' => 'Dompet', 'balance' => 5000000]);
+    $oldCategory = Category::create(['name' => 'Makanan Lama', 'type' => 'expense', 'icon' => 'fastfood']);
+    
+    $budget = Budget::create([
+        'user_id'      => $user->id,
+        'category_id'  => $oldCategory->id,
+        'limit_amount' => 1500000,
+        'month_year'   => '09-2026',
+    ]);
+
+    // Transaction in August 2026 (past month) - SHOULD NOT BE MIGRATED
+    $pastTx = Transaction::create([
+        'user_id'     => $user->id,
+        'wallet_id'   => $wallet->id,
+        'category_id' => $oldCategory->id,
+        'title'       => 'Makan Agustus',
+        'type'        => 'expense',
+        'amount'      => 100000,
+        'date'        => '2026-08-20',
+    ]);
+
+    // Transaction in September 2026 (current month) - MUST BE MIGRATED
+    $currentTx = Transaction::create([
+        'user_id'     => $user->id,
+        'wallet_id'   => $wallet->id,
+        'category_id' => $oldCategory->id,
+        'title'       => 'Makan September',
+        'type'        => 'expense',
+        'amount'      => 200000,
+        'date'        => '2026-09-05',
+    ]);
+
+    // Update budget category name to "Makanan & Minuman Baru"
+    $response = $this->putJson("/api/budgets/{$budget->id}", [
+        'name'         => 'Makanan & Minuman Baru',
+        'limit_amount' => 2500000,
+    ]);
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'success' => true,
+            'message' => 'Budget updated successfully',
+            'data'    => [
+                'id'           => $budget->id,
+                'limit_amount' => 2500000,
+                'category'     => [
+                    'name' => 'Makanan & Minuman Baru',
+                ],
+            ],
+        ]);
+
+    // Verify old category in DB unchanged
+    $oldCategoryFresh = Category::find($oldCategory->id);
+    expect($oldCategoryFresh->name)->toBe('Makanan Lama');
+
+    // Verify budget points to new category
+    $budgetFresh = Budget::find($budget->id);
+    expect($budgetFresh->category_id)->not->toBe($oldCategory->id);
+    expect($budgetFresh->category->name)->toBe('Makanan & Minuman Baru');
+
+    // Verify September transaction was moved to new category
+    $currentTxFresh = Transaction::find($currentTx->id);
+    expect($currentTxFresh->category_id)->toBe($budgetFresh->category_id);
+
+    // Verify August transaction remains in old category
+    $pastTxFresh = Transaction::find($pastTx->id);
+    expect($pastTxFresh->category_id)->toBe($oldCategory->id);
+});
+
+test('updating budget with identical category name does not create new category', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $category = Category::create(['name' => 'Belanja', 'type' => 'expense']);
+    $budget = Budget::create([
+        'user_id'      => $user->id,
+        'category_id'  => $category->id,
+        'limit_amount' => 1000000,
+        'month_year'   => '09-2026',
+    ]);
+
+    $categoriesCountBefore = Category::count();
+
+    $response = $this->putJson("/api/budgets/{$budget->id}", [
+        'name'         => 'Belanja',
+        'limit_amount' => 1200000,
+    ]);
+
+    $response->assertStatus(200);
+
+    expect(Category::count())->toBe($categoriesCountBefore);
+    $budgetFresh = Budget::find($budget->id);
+    expect($budgetFresh->category_id)->toBe($category->id);
+    expect((float) $budgetFresh->limit_amount)->toBe(1200000.0);
+});
+
+test('user can delete budget using destroy endpoint', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $category = Category::create(['name' => 'Hiburan', 'type' => 'expense']);
+    $budget = Budget::create([
+        'user_id'      => $user->id,
+        'category_id'  => $category->id,
+        'limit_amount' => 750000,
+        'month_year'   => '09-2026',
+    ]);
+
+    $response = $this->deleteJson("/api/budgets/{$budget->id}");
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'success' => true,
+            'message' => 'Budget deleted successfully',
+        ]);
+
+    expect(Budget::find($budget->id))->toBeNull();
+});
+
+test('cannot delete budget of another user', function () {
+    $user1 = User::factory()->create();
+    $user2 = User::factory()->create();
+
+    Sanctum::actingAs($user1);
+
+    $category = Category::create(['name' => 'Hiburan', 'type' => 'expense']);
+    $budget = Budget::create([
+        'user_id'      => $user2->id,
+        'category_id'  => $category->id,
+        'limit_amount' => 750000,
+        'month_year'   => '09-2026',
+    ]);
+
+    $response = $this->deleteJson("/api/budgets/{$budget->id}");
+
+    $response->assertStatus(404)
+        ->assertJson([
+            'success' => false,
+            'message' => 'Budget not found',
+        ]);
+
+    expect(Budget::find($budget->id))->not->toBeNull();
+});
