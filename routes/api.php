@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\TransactionController;
@@ -46,6 +47,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Budget routes
     Route::get('/budgets', [BudgetController::class, 'index']);
     Route::post('/budgets', [BudgetController::class, 'store']);
+    Route::put('/budgets/{id}', [BudgetController::class, 'update']);
+    Route::delete('/budgets/{id}', [BudgetController::class, 'destroy']);
 
     // Wallet routes
     Route::get('/wallets', [WalletController::class, 'index']);
@@ -54,7 +57,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/wallets/{id}', [WalletController::class, 'destroy']);
 
     // Analytics routes
+    Route::get('/analytics', [AnalyticsController::class, 'getMonthlyReport']);
     Route::get('/analytics/monthly', [AnalyticsController::class, 'getMonthlySummary']);
+    Route::get('/analytics/monthly-report', [AnalyticsController::class, 'getMonthlyReport']);
+    Route::get('/analytics/report', [AnalyticsController::class, 'getMonthlyReport']);
+
+    // Export routes (PDF & Excel)
+    Route::get('/export/pdf', [ExportController::class, 'exportPDF']);
+    Route::get('/export/excel', [ExportController::class, 'exportExcel']);
 
     // Scan transactions route
     Route::post('/transactions/scan', [TransactionController::class, 'scan']);

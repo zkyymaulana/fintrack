@@ -19,7 +19,7 @@ class CategoryController extends Controller
             $query->where('type', $request->query('type'));
         }
 
-        $categories = $query->get();
+        $categories = $query->latest()->get();
 
         return response()->json([
             'success' => true,
@@ -34,20 +34,26 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'type' => 'required|in:income,expense',
+            'name' => 'required|string|max:255|unique:categories,name',
+            'type' => 'nullable|in:income,expense',
             'icon' => 'nullable|string|max:255',
+        ], [
+            'name.required' => 'Nama kategori wajib diisi.',
+            'name.string' => 'Nama kategori harus berupa teks.',
+            'name.max' => 'Nama kategori maksimal 255 karakter.',
+            'name.unique' => 'Nama kategori sudah terdaftar.',
+            'type.in' => 'Tipe kategori harus income atau expense.',
         ]);
 
         $category = Category::create([
             'name' => $validatedData['name'],
-            'type' => $validatedData['type'],
-            'icon' => $validatedData['icon'] ?? null,
+            'type' => $validatedData['type'] ?? 'expense',
+            'icon' => $validatedData['icon'] ?? 'category',
         ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Category created successfully',
+            'message' => 'Kategori berhasil ditambahkan',
             'data' => $category,
         ], 201);
     }
@@ -62,7 +68,7 @@ class CategoryController extends Controller
         if (!$category) {
             return response()->json([
                 'success' => false,
-                'message' => 'Category not found',
+                'message' => 'Kategori tidak ditemukan',
             ], 404);
         }
 
@@ -83,21 +89,27 @@ class CategoryController extends Controller
         if (!$category) {
             return response()->json([
                 'success' => false,
-                'message' => 'Category not found',
+                'message' => 'Kategori tidak ditemukan',
             ], 404);
         }
 
         $validatedData = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'type' => 'sometimes|required|in:income,expense',
+            'name' => 'required|string|max:255|unique:categories,name,' . $id,
+            'type' => 'nullable|in:income,expense',
             'icon' => 'nullable|string|max:255',
+        ], [
+            'name.required' => 'Nama kategori wajib diisi.',
+            'name.string' => 'Nama kategori harus berupa teks.',
+            'name.max' => 'Nama kategori maksimal 255 karakter.',
+            'name.unique' => 'Nama kategori sudah terdaftar.',
+            'type.in' => 'Tipe kategori harus income atau expense.',
         ]);
 
         $category->update($validatedData);
 
         return response()->json([
             'success' => true,
-            'message' => 'Category updated successfully',
+            'message' => 'Kategori berhasil diperbarui',
             'data' => $category,
         ], 200);
     }
@@ -112,14 +124,15 @@ class CategoryController extends Controller
         if (!$category) {
             return response()->json([
                 'success' => false,
-                'message' => 'Category not found',
+                'message' => 'Kategori tidak ditemukan',
             ], 404);
         }
 
+        // WAJIB: Proteksi jika ID kategori sudah dipakai di tabel transactions atau budgets
         if ($category->transactions()->exists() || $category->budgets()->exists()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot delete category with associated transactions or budgets',
+                'message' => 'Kategori sedang digunakan dan tidak dapat dihapus',
             ], 400);
         }
 
@@ -127,7 +140,7 @@ class CategoryController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Category deleted successfully',
+            'message' => 'Kategori berhasil dihapus',
         ], 200);
     }
 }
