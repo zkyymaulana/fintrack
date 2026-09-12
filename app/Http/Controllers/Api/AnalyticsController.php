@@ -48,8 +48,14 @@ class AnalyticsController extends Controller
             ->whereBetween('date', [$startOfMonth, $endOfMonth])
             ->get();
 
-        $incomeTransactions = $currentMonthTransactions->where('type', 'income');
-        $expenseTransactions = $currentMonthTransactions->where('type', 'expense');
+        // Isolasi Mutlak: Hanya transaksi 'income' dan 'expense' murni (transfer/saving dikecualikan)
+        $incomeTransactions = $currentMonthTransactions->filter(function ($tx) {
+            return strtolower(trim($tx->type ?? '')) === 'income';
+        });
+
+        $expenseTransactions = $currentMonthTransactions->filter(function ($tx) {
+            return strtolower(trim($tx->type ?? '')) === 'expense';
+        });
 
         $totalIncome = (float) $incomeTransactions->sum(function ($tx) {
             return (float) ($tx->amount + ($tx->admin_fee ?? 0));
@@ -57,6 +63,25 @@ class AnalyticsController extends Controller
 
         $totalExpense = (float) $expenseTransactions->sum(function ($tx) {
             return (float) ($tx->amount + ($tx->admin_fee ?? 0));
+        });
+
+        // Auto-detect saving / investment dari transaksi transfer dengan kata kunci tertentu
+        $savingKeywords = ['investasi', 'saham', 'bibit', 'bbri', 'bmri', 'saving'];
+        $savingTransactions = $currentMonthTransactions->filter(function ($tx) use ($savingKeywords) {
+            if (strtolower(trim($tx->type ?? '')) !== 'transfer') {
+                return false;
+            }
+            $searchableText = strtolower(trim(($tx->title ?? '') . ' ' . ($tx->note ?? '')));
+            foreach ($savingKeywords as $keyword) {
+                if (str_contains($searchableText, $keyword)) {
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        $totalSaving = (float) $savingTransactions->sum(function ($tx) {
+            return (float) $tx->amount;
         });
 
         $netCashFlow = (float) ($totalIncome - $totalExpense);
@@ -191,7 +216,51 @@ class AnalyticsController extends Controller
             ->all();
 
         // -------------------------------------------------------------
-        // 6. Response JSON Terstruktur Kelas Enterprise
+        // 6. Expense Distribution: Distribusi Pengeluaran dengan Detail Transaksi per Kategori
+        // -------------------------------------------------------------
+        $expenseDistribution = $expenseTransactions
+            ->groupBy(function ($tx) {
+                return $tx->category ? $tx->category->name : 'Lainnya';
+            })
+            ->map(function ($group, $categoryName) use ($totalExpense) {
+                $firstCategory = $group->first()?->category;
+                $categoryTotal = (float) $group->sum(function ($tx) {
+                    return (float) ($tx->amount + ($tx->admin_fee ?? 0));
+                });
+
+                $percentage = $totalExpense > 0
+                    ? round(($categoryTotal / $totalExpense) * 100, 2)
+                    : 0.0;
+
+                $transactions = $group->sortByDesc('date')->values()->map(function ($tx) {
+                    return [
+                        'id'         => $tx->id,
+                        'title'      => $tx->title,
+                        'amount'     => (float) ($tx->amount + ($tx->admin_fee ?? 0)),
+                        'raw_amount' => (float) $tx->amount,
+                        'admin_fee'  => (float) ($tx->admin_fee ?? 0),
+                        'date'       => $tx->date,
+                        'note'       => $tx->note,
+                    ];
+                })->all();
+
+                return [
+                    'category_id'        => $firstCategory?->id,
+                    'category_name'      => $categoryName,
+                    'category_icon'      => $firstCategory?->icon ?? 'category',
+                    'total_amount'       => (float) $categoryTotal,
+                    'percentage'         => (float) $percentage,
+                    'transactions_count' => count($transactions),
+                    'transactions'       => $transactions,
+                ];
+            })
+            ->filter(fn($item) => $item['total_amount'] > 0)
+            ->sortByDesc('total_amount')
+            ->values()
+            ->all();
+
+        // -------------------------------------------------------------
+        // 7. Response JSON Terstruktur Kelas Enterprise
         // -------------------------------------------------------------
         return response()->json([
             'success' => true,
@@ -205,8 +274,10 @@ class AnalyticsController extends Controller
                 'summary' => [
                     'total_income'  => (float) $totalIncome,
                     'total_expense' => (float) $totalExpense,
+                    'total_saving'  => (float) $totalSaving,
                     'net_cash_flow' => (float) $netCashFlow,
                 ],
+                'total_saving' => (float) $totalSaving,
                 'health_indicators' => [
                     'savings_rate_percentage'       => (float) $savingsRate,
                     'health_status'                 => $healthStatus,
@@ -216,9 +287,13 @@ class AnalyticsController extends Controller
                     'expense_by_category'   => $expenseByCategory,
                     'six_months_trend'      => $sixMonthsTrend,
                     'top_specific_expenses' => $topSpecificExpenses,
+                    'expense_distribution'  => $expenseDistribution,
                 ],
+                'expense_distribution' => $expenseDistribution,
                 'top_specific_expenses' => $topSpecificExpenses,
             ],
+            'total_saving'         => (float) $totalSaving,
+            'expense_distribution' => $expenseDistribution,
         ], 200);
     }
 
