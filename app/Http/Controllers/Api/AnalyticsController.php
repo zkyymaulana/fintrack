@@ -87,43 +87,41 @@ class AnalyticsController extends Controller
         $netCashFlow = (float) ($totalIncome - $totalExpense);
 
         // -------------------------------------------------------------
-        // 2. Health Indicators (Indikator Kesehatan Finansial)
+        // 2. Health Indicators (Indikator Kesehatan Finansial) & Formulasi Presisi
         // -------------------------------------------------------------
-        // Savings Rate: ((Income - Expense) / Income) * 100
-        if ($totalIncome > 0) {
-            $savingsRate = round((($totalIncome - $totalExpense) / $totalIncome) * 100, 2);
-        } else {
-            $savingsRate = $totalExpense > 0 ? -100.0 : 0.0;
-        }
+        // saving_rate = (total_saving / total_income) * 100 (Jika total_income 0, set ke 0)
+        $savingRate = $totalIncome > 0
+            ? round(($totalSaving / $totalIncome) * 100, 2)
+            : 0.0;
 
-        // Health Status Logic
-        if ($savingsRate >= 20) {
-            $healthStatus = 'Sangat Sehat';
-        } elseif ($savingsRate >= 10) {
-            $healthStatus = 'Sehat';
-        } elseif ($savingsRate >= 1) {
-            $healthStatus = 'Rentan';
-        } else {
-            $healthStatus = 'Bahaya/Defisit';
-        }
-
-        // Budget Utilization: Total Pengeluaran / Total Limit Seluruh Budget Bulan Ini
-        $totalBudgetLimit = (float) $user->budgets()
+        // Total Budget Allocated Bulan Ini (prioritas bulan ini, fallback ke budget aktif per kategori)
+        $totalBudgetAllocated = (float) $user->budgets()
             ->where('month_year', $targetMonthYearStr)
             ->sum('limit_amount');
 
-        // Fallback jika user belum membuat budget spesifik untuk bulan ini, ambil budget aktif
-        if ($totalBudgetLimit <= 0) {
+        if ($totalBudgetAllocated <= 0) {
             $allBudgets = $user->budgets()->get();
-            $totalBudgetLimit = (float) $allBudgets
+            $totalBudgetAllocated = (float) $allBudgets
                 ->groupBy('category_id')
                 ->map(fn($group) => $group->firstWhere('month_year', $targetMonthYearStr) ?? $group->first())
                 ->sum('limit_amount');
         }
 
-        $budgetUtilization = $totalBudgetLimit > 0
-            ? round(($totalExpense / $totalBudgetLimit) * 100, 2)
+        // budget_utilization = (total_expense / total_budget_allocated) * 100 (Jika total_budget 0, set ke 0)
+        $budgetUtilization = $totalBudgetAllocated > 0
+            ? round(($totalExpense / $totalBudgetAllocated) * 100, 2)
             : 0.0;
+
+        // Health Status Logic (Berdasarkan saving_rate)
+        if ($savingRate >= 20) {
+            $healthStatus = 'Sangat Sehat';
+        } elseif ($savingRate >= 10) {
+            $healthStatus = 'Sehat';
+        } elseif ($savingRate >= 1) {
+            $healthStatus = 'Rentan';
+        } else {
+            $healthStatus = $totalIncome > 0 ? 'Kurang/Defisit' : 'Belum Ada Pemasukan';
+        }
 
         // -------------------------------------------------------------
         // 3. Chart Data: Pengeluaran per Kategori (diurutkan terbesar)
@@ -272,16 +270,25 @@ class AnalyticsController extends Controller
                     'formatted' => $targetDate->format('F Y'),
                 ],
                 'summary' => [
-                    'total_income'  => (float) $totalIncome,
-                    'total_expense' => (float) $totalExpense,
-                    'total_saving'  => (float) $totalSaving,
-                    'net_cash_flow' => (float) $netCashFlow,
+                    'total_income'           => (float) $totalIncome,
+                    'total_expense'          => (float) $totalExpense,
+                    'total_saving'           => (float) $totalSaving,
+                    'net_cash_flow'          => (float) $netCashFlow,
+                    'total_budget_allocated' => (float) $totalBudgetAllocated,
+                    'saving_rate'            => (float) $savingRate,
+                    'budget_utilization'     => (float) $budgetUtilization,
                 ],
-                'total_saving' => (float) $totalSaving,
+                'total_saving'           => (float) $totalSaving,
+                'saving_rate'            => (float) $savingRate,
+                'budget_utilization'     => (float) $budgetUtilization,
+                'total_budget_allocated' => (float) $totalBudgetAllocated,
                 'health_indicators' => [
-                    'savings_rate_percentage'       => (float) $savingsRate,
+                    'savings_rate_percentage'       => (float) $savingRate,
+                    'saving_rate'                   => (float) $savingRate,
                     'health_status'                 => $healthStatus,
                     'budget_utilization_percentage' => (float) $budgetUtilization,
+                    'budget_utilization'            => (float) $budgetUtilization,
+                    'total_budget_allocated'        => (float) $totalBudgetAllocated,
                 ],
                 'chart_data' => [
                     'expense_by_category'   => $expenseByCategory,
@@ -292,8 +299,11 @@ class AnalyticsController extends Controller
                 'expense_distribution' => $expenseDistribution,
                 'top_specific_expenses' => $topSpecificExpenses,
             ],
-            'total_saving'         => (float) $totalSaving,
-            'expense_distribution' => $expenseDistribution,
+            'total_saving'           => (float) $totalSaving,
+            'saving_rate'            => (float) $savingRate,
+            'budget_utilization'     => (float) $budgetUtilization,
+            'total_budget_allocated' => (float) $totalBudgetAllocated,
+            'expense_distribution'   => $expenseDistribution,
         ], 200);
     }
 

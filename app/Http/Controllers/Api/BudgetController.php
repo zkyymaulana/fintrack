@@ -57,26 +57,58 @@ class BudgetController extends Controller
             ->orderBy('id', 'desc')
             ->get();
 
-        // Kelompokkan berdasarkan category_id
-        // Tiap kategori mempertahankan limit_amount terbaru,
-        // namun actual_spend dihitung khusus dari transaksi pada target bulan & tahun.
         $budgets = $allBudgets->groupBy('category_id')->map(function ($categoryBudgets) use ($targetMonthYearStr, $request, $targetMonth, $targetYear) {
             $budget = $categoryBudgets->firstWhere('month_year', $targetMonthYearStr);
             if (!$budget) {
                 $budget = clone $categoryBudgets->first();
             }
 
-            $actualSpend = $request->user()->transactions()
-                ->where('category_id', $budget->category_id)
-                ->whereMonth('date', $targetMonth)
-                ->whereYear('date', $targetYear)
-                ->where('type', 'expense')
-                ->get()
-                ->sum(function ($transaction) {
+            $categoryName = strtolower(trim($budget->category->name ?? ''));
+            $investmentKeywords = ['investasi', 'saham', 'bibit', 'bbri', 'bmri', 'saving'];
+            $isInvestment = false;
+            foreach ($investmentKeywords as $k) {
+                if (str_contains($categoryName, $k)) {
+                    $isInvestment = true;
+                    break;
+                }
+            }
+
+            if ($isInvestment) {
+                // Khusus budget Investasi/Saving: ambil dari transaksi type = 'transfer' dengan kata kunci terkait
+                $transfers = $request->user()->transactions()
+                    ->whereMonth('date', $targetMonth)
+                    ->whereYear('date', $targetYear)
+                    ->where('type', 'transfer')
+                    ->get();
+
+                $actualSpend = $transfers->filter(function ($tx) use ($investmentKeywords, $budget) {
+                    if ($tx->category_id == $budget->category_id) {
+                        return true;
+                    }
+                    $searchable = strtolower(trim(($tx->title ?? '') . ' ' . ($tx->note ?? '')));
+                    foreach ($investmentKeywords as $k) {
+                        if (str_contains($searchable, $k)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                })->sum(function ($transaction) {
                     return (float) ($transaction->amount + ($transaction->admin_fee ?? 0));
                 });
+            } else {
+                $actualSpend = $request->user()->transactions()
+                    ->where('category_id', $budget->category_id)
+                    ->whereMonth('date', $targetMonth)
+                    ->whereYear('date', $targetYear)
+                    ->where('type', 'expense')
+                    ->get()
+                    ->sum(function ($transaction) {
+                        return (float) ($transaction->amount + ($transaction->admin_fee ?? 0));
+                    });
+            }
 
             $budget->actual_spend = (float) $actualSpend;
+            $budget->realized_amount = (float) $actualSpend;
             $budget->remaining_budget = (float) ($budget->limit_amount - $actualSpend);
             $budget->month_year = $targetMonthYearStr;
 
@@ -139,13 +171,44 @@ class BudgetController extends Controller
         })->values();
 
         foreach ($budgets as $budget) {
-            $actualSpend = $user->transactions()
-                ->where('category_id', $budget->category_id)
-                ->whereMonth('date', $month)
-                ->whereYear('date', $year)
-                ->where('type', 'expense')
-                ->get()
-                ->sum(fn($t) => (float) ($t->amount + $t->admin_fee));
+            $categoryName = strtolower(trim($budget->category->name ?? 'General'));
+            $investmentKeywords = ['investasi', 'saham', 'bibit', 'bbri', 'bmri', 'saving'];
+            $isInvestment = false;
+            foreach ($investmentKeywords as $k) {
+                if (str_contains($categoryName, $k)) {
+                    $isInvestment = true;
+                    break;
+                }
+            }
+
+            if ($isInvestment) {
+                $transfers = $user->transactions()
+                    ->whereMonth('date', $month)
+                    ->whereYear('date', $year)
+                    ->where('type', 'transfer')
+                    ->get();
+
+                $actualSpend = $transfers->filter(function ($tx) use ($investmentKeywords, $budget) {
+                    if ($tx->category_id == $budget->category_id) {
+                        return true;
+                    }
+                    $searchable = strtolower(trim(($tx->title ?? '') . ' ' . ($tx->note ?? '')));
+                    foreach ($investmentKeywords as $k) {
+                        if (str_contains($searchable, $k)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                })->sum(fn($t) => (float) ($t->amount + ($t->admin_fee ?? 0)));
+            } else {
+                $actualSpend = $user->transactions()
+                    ->where('category_id', $budget->category_id)
+                    ->whereMonth('date', $month)
+                    ->whereYear('date', $year)
+                    ->where('type', 'expense')
+                    ->get()
+                    ->sum(fn($t) => (float) ($t->amount + $t->admin_fee));
+            }
 
             $percentage   = $budget->limit_amount > 0
                 ? ($actualSpend / $budget->limit_amount) * 100
