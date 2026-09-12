@@ -15,8 +15,8 @@ class TransactionController extends Controller
      */
     public function index(Request $request)
     {
-        // Retrieve transactions for the authenticated user, including category information ordered by transaction date
-        $transactions = $request->user()->transactions()->with('category')->orderBy('date', 'desc')->orderBy('created_at', 'desc')->get()->map(function ($transaction) {
+        // Retrieve transactions for the authenticated user, including category and wallet information ordered by transaction date
+        $transactions = $request->user()->transactions()->with(['category', 'wallet', 'toWallet', 'destinationWallet'])->orderBy('date', 'desc')->orderBy('created_at', 'desc')->get()->map(function ($transaction) {
             $transaction->total_amount = $transaction->amount + $transaction->admin_fee;
             return $transaction;
         });
@@ -96,7 +96,7 @@ class TransactionController extends Controller
         
         BudgetController::checkBudgetAndNotify($request);
 
-        return response()->json(['message' => 'Transaction created successfully', 'data' => $transaction->load('category') // load the category in the response
+        return response()->json(['message' => 'Transaction created successfully', 'data' => $transaction->load(['category', 'wallet', 'toWallet'])
         ], 201);
     }
 
@@ -189,7 +189,7 @@ class TransactionController extends Controller
             }
         }  
 
-        return response()->json(['success' => true, 'message' => 'Transaction updated successfully', 'data' => $transaction->load('category')], 200);
+        return response()->json(['success' => true, 'message' => 'Transaction updated successfully', 'data' => $transaction->load(['category', 'wallet', 'toWallet'])], 200);
     }
 
     /**
