@@ -53,7 +53,7 @@ test('user can create a new category', function () {
     $response->assertStatus(201)
         ->assertJson([
             'success' => true,
-            'message' => 'Category created successfully',
+            'message' => 'Kategori berhasil ditambahkan',
             'data' => [
                 'name' => 'Investasi',
                 'type' => 'income',
@@ -101,7 +101,7 @@ test('user can delete a category if not in use', function () {
     $response->assertStatus(200)
         ->assertJson([
             'success' => true,
-            'message' => 'Category deleted successfully',
+            'message' => 'Kategori berhasil dihapus',
         ]);
 
     $this->assertDatabaseMissing('categories', ['id' => $category->id]);

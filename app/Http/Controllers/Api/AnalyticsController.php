@@ -58,7 +58,7 @@ class AnalyticsController extends Controller
         });
 
         $totalIncome = (float) $incomeTransactions->sum(function ($tx) {
-            return (float) ($tx->amount + ($tx->admin_fee ?? 0));
+            return (float) $tx->amount;
         });
 
         $totalExpense = (float) $expenseTransactions->sum(function ($tx) {
@@ -173,7 +173,7 @@ class AnalyticsController extends Controller
             });
 
             $mIncome = (float) $monthTx->where('type', 'income')->sum(function ($tx) {
-                return (float) ($tx->amount + ($tx->admin_fee ?? 0));
+                return (float) $tx->amount;
             });
 
             $mExpense = (float) $monthTx->where('type', 'expense')->sum(function ($tx) {

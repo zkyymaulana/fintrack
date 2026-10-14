@@ -7,6 +7,7 @@ use App\Models\Wallet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class TransactionController extends Controller
 {
@@ -31,12 +32,12 @@ class TransactionController extends Controller
         //
         $validatedData = $request->validate([
             'category_id'        => 'required|exists:categories,id',
-            'wallet_id'          => 'nullable|exists:wallets,id', 
+            'wallet_id'          => ['nullable', Rule::exists('wallets', 'id')->where('user_id', $request->user()->id)->whereNull('deleted_at')],
             'title'              => 'required|string|max:255',
             'amount'             => 'required|numeric|min:0',
             'admin_fee'          => 'nullable|numeric|min:0',
             'type'               => 'required|in:income,expense,transfer',
-            'to_wallet_id' => 'nullable|exists:wallets,id|different:wallet_id',
+            'to_wallet_id' => [Rule::requiredIf(fn () => $request->input('type') === 'transfer'), 'nullable', Rule::exists('wallets', 'id')->where('user_id', $request->user()->id)->whereNull('deleted_at'), 'different:wallet_id'],
             'date'               => 'required|date',
             'note'               => 'nullable|string',
             'is_ocr'             => 'nullable|boolean',
@@ -59,6 +60,7 @@ class TransactionController extends Controller
             'user_id'           => $request->user()->id, // get the authenticated user's ID
             'category_id'        => $validatedData['category_id'],
             'wallet_id'          => $validatedData['wallet_id'],
+            'to_wallet_id'       => $validatedData['to_wallet_id'] ?? null,
             'title'              => $validatedData['title'],
             'amount'             => $validatedData['amount'],
             'admin_fee'          => $adminFee,
@@ -121,7 +123,7 @@ class TransactionController extends Controller
 
         $validatedData = $request->validate([
             'category_id'        => 'sometimes|exists:categories,id',
-            'wallet_id'          => 'sometimes|exists:wallets,id',
+            'wallet_id'          => ['sometimes', Rule::exists('wallets', 'id')->where('user_id', $request->user()->id)->whereNull('deleted_at')],
             'title'              => 'sometimes|string|max:255',
             'amount'             => 'sometimes|numeric|min:0',
             'admin_fee'          => 'sometimes|numeric|min:0',

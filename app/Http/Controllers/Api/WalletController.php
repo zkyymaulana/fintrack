@@ -80,7 +80,7 @@ class WalletController extends Controller
         }
 
         // Check if the wallet has any associated transactions
-        if ($wallet->transactions()->exists()) {
+        if ($wallet->transactions()->exists() || $request->user()->transactions()->where('to_wallet_id', $wallet->id)->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot delete wallet with associated transactions',

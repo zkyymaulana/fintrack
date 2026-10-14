@@ -15,6 +15,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Production needs categories, but never the sample account with a known password.
+        if (app()->environment('production')) {
+            $this->call(CategorySeeder::class);
+
+            return;
+        }
+
         User::firstOrCreate(
             ['email' => 'zakymaulana363@gmail.com'],
             [

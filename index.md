@@ -1,0 +1,27 @@
+# finTrack-be
+Indeks proyek backend FinTrack berbasis Laravel.
+
+## Isi folder
+- [app/](./app/index.md)
+- [bootstrap/](./bootstrap/index.md)
+- [config/](./config/index.md)
+- [database/](./database/index.md)
+- [docs/](./docs/index.md)
+- [public/](./public/index.md)
+- [resources/](./resources/index.md)
+- [routes/](./routes/index.md)
+- [tests/](./tests/index.md)
+- [.editorconfig](./.editorconfig)
+- [.env.example](./.env.example)
+- [.gitattributes](./.gitattributes)
+- [.gitignore](./.gitignore)
+- [AGENTS.md](./AGENTS.md)
+- [artisan](./artisan)
+- [composer.json](./composer.json)
+- [composer.lock](./composer.lock)
+- [package.json](./package.json)
+- [package-lock.json](./package-lock.json)
+- [phpunit.xml](./phpunit.xml)
+- [README.md](./README.md)
+- [tsconfig.json](./tsconfig.json)
+- [vite.config.js](./vite.config.js)
