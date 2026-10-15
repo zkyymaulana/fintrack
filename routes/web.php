@@ -11,7 +11,7 @@ use App\Http\Controllers\Web\TransactionController;
 use App\Http\Controllers\Web\WalletController;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/dashboard');
+Route::redirect('/', '/fintrack/dashboard');
 
 Route::middleware('guest:web')->group(function (): void {
     Route::get('/login', [SessionController::class, 'create'])->name('login');
