@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -30,6 +30,7 @@ class WalletController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate($this->rules());
+        $data['wallet_type'] ??= 'regular';
         $request->user()->wallets()->create($data);
 
         return redirect()->route('wallets.index')->with('success', 'Dompet berhasil ditambahkan.');
@@ -70,7 +71,7 @@ class WalletController extends Controller
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'wallet_type' => ['required', Rule::in(['regular', 'investment'])],
+            'wallet_type' => ['sometimes', 'required', Rule::in(['regular', 'investment'])],
             'balance' => ['required', 'numeric', 'min:0', 'decimal:0,2', 'max:9999999999999.99'],
         ];
     }
