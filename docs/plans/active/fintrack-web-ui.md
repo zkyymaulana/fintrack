@@ -66,7 +66,7 @@ Tahap 1 menambahkan route web berbasis sesi di `routes/web.php`, controller di `
 
 ## Kondisi saat ini
 
-- Backend menggunakan Laravel 12, PHP 8.2+, Eloquent, Vite, dan Tailwind CSS 4.
+- Backend menggunakan Laravel 13, PHP 8.5.12+, Eloquent, Vite, dan Tailwind CSS 4.
 - `routes/web.php` menyediakan login, pendaftaran, logout, dashboard, dompet, transaksi, anggaran, analitik, laporan, dan profil yang memerlukan sesi web.
 - API keuangan tersedia di `routes/api.php`; endpoint API yang terlindungi menggunakan Sanctum bearer token untuk aplikasi Flutter.
 - Model utama mencakup user, kategori, transaksi, dompet, anggaran, laporan, notifikasi, dan riwayat chatbot.
@@ -154,7 +154,7 @@ Chatbot dan scan struk/voice tidak masuk MVP antarmuka web; evaluasi sebagai tah
 
 | Kebutuhan | Pilihan | Penggunaan |
 | --- | --- | --- |
-| Backend dan routing | Laravel 12 | Route web, middleware sesi, validasi, query model, unduhan laporan. |
+| Backend dan routing | Laravel 13 | Route web, middleware sesi, validasi, query model, unduhan laporan. |
 | Bridge server/client | Inertia.js Laravel adapter + Vue 3 adapter | Mengirim props Laravel ke halaman Vue tanpa membuat SPA/server terpisah. |
 | Frontend | Vue 3 + TypeScript | Halaman, form, state komponen, dan interaksi responsif. |
 | Build aset | Vite yang sudah ada | Mengompilasi aset web ke direktori build Laravel. |
@@ -166,7 +166,7 @@ Chatbot dan scan struk/voice tidak masuk MVP antarmuka web; evaluasi sebagai tah
 | Format angka/tanggal | `Intl.NumberFormat` + `Intl.DateTimeFormat` | Format `id-ID` tanpa library format tambahan. |
 | Notifikasi UI | Komponen toast yang kompatibel dengan Vue, dipilih saat implementasi | Feedback sukses/gagal; hindari notifikasi yang hanya tampil sebentar untuk error form penting. |
 
-Versi package harus diperiksa kecocokannya dengan Laravel 12, Vite 7, Tailwind 4, dan Vue saat implementasi. Vite 7 membutuhkan Node.js 20.19+ atau 22.12+ untuk lingkungan build resmi. Tambahkan hanya package yang benar-benar dipakai.
+Versi package harus diperiksa kecocokannya dengan Laravel 13, Vite 7, Tailwind 4, dan Vue saat implementasi. Vite 7 membutuhkan Node.js 20.19+ atau 22.12+ untuk lingkungan build resmi. Tambahkan hanya package yang benar-benar dipakai.
 
 ## Struktur file target
 

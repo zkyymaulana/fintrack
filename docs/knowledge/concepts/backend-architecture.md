@@ -14,7 +14,7 @@ sources:
 
 # Overview
 
-`finTrack-be` adalah aplikasi Laravel 12 dengan PHP 8.2. Aplikasi menyediakan route API di `routes/api.php`, route web di `routes/web.php`, controller di `app/Http/Controllers`, model Eloquent di `app/Models`, dan skema basis data melalui migration.
+`finTrack-be` adalah aplikasi Laravel 13 dengan PHP 8.5.12. Aplikasi menyediakan route API di `routes/api.php`, route web di `routes/web.php`, controller di `app/Http/Controllers`, model Eloquent di `app/Models`, dan skema basis data melalui migration.
 
 Aplikasi Flutter berada di repo sejajar `fintrack_app`. Flutter memanggil API Laravel; API dan database tetap menjadi sumber data bersama.
 

@@ -2,7 +2,7 @@
 
 ## Cakupan proyek
 
-- Folder ini adalah backend FinTrack berbasis Laravel 12 dan PHP 8.2+, dengan API di `routes/api.php` dan `app/Http/Controllers/Api/`.
+- Folder ini adalah backend FinTrack berbasis Laravel 13 dan PHP 8.5.12+, dengan API di `routes/api.php` dan `app/Http/Controllers/Api/`.
 - Kerjakan perubahan backend di `finTrack-be`. Jangan mengubah repo Flutter `fintrack_app` kecuali pengguna secara eksplisit memintanya.
 - Sebelum mengubah file, periksa implementasi dan perubahan lokal yang sudah ada. Pertahankan perubahan pengguna yang tidak terkait.
 - Jangan menambahkan dependency atau mengubah kontrak API tanpa kebutuhan yang jelas. Jangan membaca, menyalin, atau menuliskan rahasia dari `.env`.

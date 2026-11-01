@@ -12,10 +12,10 @@ Panduan ini disiapkan untuk paket shared hosting Arenhost dengan domain yang sud
 
 ## 1. Periksa lingkungan
 
-- Pilih PHP 8.2 atau lebih baru. Pastikan ekstensi yang dibutuhkan Laravel dan paket aplikasi tersedia, terutama BCMath, cURL, DOM/XML, Fileinfo, GD, Mbstring, OpenSSL, PDO MySQL, dan Zip. Jalankan `composer check-platform-reqs --no-dev` setelah instalasi.
+- Pilih PHP 8.5.12 atau lebih baru. Pastikan ekstensi yang dibutuhkan Laravel dan paket aplikasi tersedia, terutama BCMath, cURL, DOM/XML, Fileinfo, GD, Mbstring, OpenSSL, PDO MySQL, dan Zip. Jalankan `composer check-platform-reqs --no-dev` setelah instalasi.
 - Siapkan database MySQL/MariaDB beserta user khusus aplikasi. Catat host, port, nama database, dan user pada pengelola rahasia hosting; jangan masukkan kata sandi ke Git.
 - Arahkan document root domain/subdomain ke folder `finTrack-be/public`. Simpan kode Laravel, `.env`, `vendor`, dan `storage` di luar document root. Jika panel tidak mengizinkan, minta dukungan Arenhost mengaturnya atau gunakan domain/subdomain yang mendukung document root khusus. [Panduan Laravel tentang document root](https://laravel.com/framework/docs/12.x/deployment#server-configuration)
-- Aktifkan sertifikat HTTPS sebelum menguji login dan cookie sesi. Pastikan `storage` dan `bootstrap/cache` dapat ditulis oleh proses PHP. [Persyaratan Laravel](https://laravel.com/framework/docs/12.x/deployment#server-requirements)
+- Aktifkan sertifikat HTTPS sebelum menguji login dan cookie sesi. Pastikan `storage` dan `bootstrap/cache` dapat ditulis oleh proses PHP. [Persyaratan Laravel](https://laravel.com/framework/docs/13.x/deployment#server-requirements)
 
 ## 2. Siapkan artefak aplikasi
 
