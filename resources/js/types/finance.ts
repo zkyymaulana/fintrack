@@ -8,6 +8,8 @@ export type Transaction = {
     admin_fee: string;
     date: string;
     note: string | null;
+    receipt_image_path?: string | null;
+    is_ocr?: boolean;
     category_id: number;
     category_name: string | null;
     wallet_id: number;
@@ -16,8 +18,8 @@ export type Transaction = {
     to_wallet_name: string | null;
 };
 
-export type Wallet = { id: number; name: string; balance: string };
-export type Option = { id: number; name: string };
+export type Wallet = { id: number; name: string; wallet_type: 'regular' | 'investment'; balance: string };
+export type Option = { id: number; name: string; wallet_type?: 'regular' | 'investment' };
 export type Category = Option & { type: 'income' | 'expense' };
 
 export type Budget = {

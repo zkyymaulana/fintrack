@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -13,7 +14,7 @@ class WalletController extends Controller
 {
     public function index(Request $request): Response
     {
-        $wallets = $request->user()->wallets()->orderBy('name')->get(['id', 'name', 'balance']);
+        $wallets = $request->user()->wallets()->orderBy('name')->get(['id', 'name', 'wallet_type', 'balance']);
 
         return Inertia::render('Wallets/Index', [
             'wallets' => $wallets,
@@ -37,7 +38,7 @@ class WalletController extends Controller
     public function edit(Request $request, string $wallet): Response
     {
         return Inertia::render('Wallets/Form', [
-            'wallet' => $request->user()->wallets()->findOrFail($wallet)->only(['id', 'name', 'balance']),
+            'wallet' => $request->user()->wallets()->findOrFail($wallet)->only(['id', 'name', 'wallet_type', 'balance']),
         ]);
     }
 
@@ -69,6 +70,7 @@ class WalletController extends Controller
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'wallet_type' => ['required', Rule::in(['regular', 'investment'])],
             'balance' => ['required', 'numeric', 'min:0', 'decimal:0,2', 'max:9999999999999.99'],
         ];
     }

@@ -28,11 +28,13 @@ class WalletController extends Controller
     {
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
+            'wallet_type' => ['sometimes', 'required', 'in:regular,investment'],
             'balance' => 'nullable|numeric|min:0',
         ]);
 
         $wallet = $request->user()->wallets()->create([
             'name' => $validatedData['name'],
+            'wallet_type' => $validatedData['wallet_type'] ?? 'regular',
             'balance' => $validatedData['balance'] ?? 0,
         ]);
 
@@ -56,6 +58,7 @@ class WalletController extends Controller
 
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
+            'wallet_type' => ['sometimes', 'required', 'in:regular,investment'],
             'balance' => 'nullable|numeric|min:0',
         ]);
 

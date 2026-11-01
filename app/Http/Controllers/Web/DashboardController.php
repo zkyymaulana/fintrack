@@ -30,7 +30,7 @@ class DashboardController extends Controller
             'transactionCount' => $user->transactions()->count(),
             'recentTransactions' => $user->transactions()->with(['category:id,name', 'wallet:id,name', 'toWallet:id,name'])
                 ->orderByDesc('date')->orderByDesc('id')->limit(5)->get()->map(fn ($transaction) => TransactionData::from($transaction)),
-            'budgetOverview' => ['totalLimit' => $budgetOverview['totalLimit'], 'totalSpent' => $budgetOverview['totalSpent'], 'budgets' => array_slice($budgetOverview['budgets'], 0, 3)],
+            'budgetOverview' => ['totalLimit' => $budgetOverview['totalLimit'], 'totalSpent' => $budgetOverview['totalSpent'], 'budgets' => $budgetOverview['budgets']],
             'trend' => $trend,
         ]);
     }

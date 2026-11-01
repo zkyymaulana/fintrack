@@ -16,6 +16,8 @@ class TransactionData
             'admin_fee' => (string) $transaction->admin_fee,
             'date' => $transaction->date,
             'note' => $transaction->note,
+            'receipt_image_path' => $transaction->receipt_image_path,
+            'is_ocr' => (bool) $transaction->is_ocr,
             'category_id' => $transaction->category_id,
             'category_name' => $transaction->category?->name,
             'wallet_id' => $transaction->wallet_id,

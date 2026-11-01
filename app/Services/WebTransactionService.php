@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -11,7 +12,12 @@ class WebTransactionService
 {
     public function save(User $user, array $data, ?Transaction $transaction = null): Transaction
     {
-        return DB::transaction(function () use ($user, $data, $transaction): Transaction {
+        $receipt = $data['receipt_image'] ?? null;
+        $removeReceipt = (bool) ($data['remove_receipt_image'] ?? false);
+        unset($data['receipt_image']);
+        unset($data['remove_receipt_image']);
+        $oldReceipt = null;
+        $saved = DB::transaction(function () use ($user, $data, $transaction, $receipt, $removeReceipt, &$oldReceipt): Transaction {
             $transaction = $transaction
                 ? $user->transactions()->lockForUpdate()->findOrFail($transaction->id)
                 : null;
@@ -19,14 +25,29 @@ class WebTransactionService
             $wallets = $this->lockWallets($user, $transaction, $data);
             if ($transaction) {
                 $this->apply($wallets, $transaction, -1);
+                $oldReceipt = ($receipt instanceof UploadedFile || $removeReceipt) ? $transaction->receipt_image_path : null;
+                if ($receipt instanceof UploadedFile) {
+                    $data['receipt_image_path'] = $receipt->store('receipts', 'public');
+                } elseif ($removeReceipt) {
+                    $data['receipt_image_path'] = null;
+                }
                 $transaction->update($data);
             } else {
+                if ($receipt instanceof UploadedFile) {
+                    $data['receipt_image_path'] = $receipt->store('receipts', 'public');
+                }
                 $transaction = $user->transactions()->create($data);
             }
             $this->apply($wallets, $transaction, 1);
 
             return $transaction;
         });
+
+        if ($oldReceipt) {
+            Storage::disk('public')->delete($oldReceipt);
+        }
+
+        return $saved;
     }
 
     public function delete(User $user, Transaction $transaction): void

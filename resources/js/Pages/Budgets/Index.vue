@@ -22,9 +22,9 @@ const badge = { safe: 'Terkendali', warning: 'Mendekati batas' };
 <template>
     <Head title="Anggaran" />
     <AppLayout title="Anggaran" subtitle="Pantau batas pengeluaran setiap kategori dan lihat sisa anggaran pada bulan pilihanmu.">
-        <div class="mb-5 flex flex-wrap items-end justify-between gap-4">
-            <form class="flex flex-wrap items-end gap-3" @submit.prevent="filter"><div><label for="budget-month" class="mb-2 block text-xs font-bold text-[#61766b]">Periode anggaran</label><input id="budget-month" v-model="selectedMonth" class="field min-w-48" type="month" required /></div><button class="primary-button" type="submit"><CalendarDays :size="17" aria-hidden="true" /> Tampilkan</button></form>
-            <Link :href="`/budgets/create?month=${month}`" class="primary-button"><Plus :size="18" aria-hidden="true" /> Atur anggaran</Link>
+        <div class="mb-5 flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-end">
+            <form class="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-[minmax(12rem,1fr)_auto] sm:items-end" @submit.prevent="filter"><div class="min-w-0"><label for="budget-month" class="mb-2 block text-xs font-bold text-[#61766b]">Periode anggaran</label><input id="budget-month" v-model="selectedMonth" class="field w-full" type="month" required /></div><button class="primary-button w-full justify-center sm:w-auto" type="submit"><CalendarDays :size="17" aria-hidden="true" /> Tampilkan</button></form>
+            <Link :href="`/budgets/create?month=${month}`" class="primary-button w-full justify-center sm:w-auto"><Plus :size="18" aria-hidden="true" /> Atur anggaran</Link>
         </div>
         <section class="grid gap-4 sm:grid-cols-3" aria-label="Ringkasan anggaran">
             <div class="rounded-3xl bg-[#194b40] p-6 text-white"><p class="text-sm text-[#c7e4d2]">Total batas</p><p class="mt-2 break-words text-2xl font-bold">{{ rupiah(totalLimit) }}</p></div>

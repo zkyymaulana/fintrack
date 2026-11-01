@@ -1,4 +1,4 @@
 # resources/js/Pages/Wallets
 
-- [Index.vue](./Index.vue) — daftar, total saldo, dan hapus dompet.
-- [Form.vue](./Form.vue) — tambah dan ubah dompet.
+- [Index.vue](./Index.vue) - Daftar dompet dengan jenis, saldo, dan aksi kelola.
+- [Form.vue](./Form.vue) - Tambah dan ubah dompet reguler atau investasi.

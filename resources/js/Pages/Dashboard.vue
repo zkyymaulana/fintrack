@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { ArrowDownLeft, ArrowLeftRight, ArrowRight, ArrowUpRight, Plus, ReceiptText, Target, Wallet } from '@lucide/vue';
+import { ArrowDownLeft, ArrowLeftRight, ArrowRight, ArrowUpRight, Eye, EyeOff, Plus, ReceiptText, Target, Wallet } from '@lucide/vue';
+import { ref } from 'vue';
 import TrendChart from '../Components/TrendChart.vue';
 import AppLayout from '../Layouts/AppLayout.vue';
 import type { Budget, Transaction, TrendPoint } from '../types/finance';
@@ -17,19 +18,20 @@ defineProps<{
     trend: TrendPoint[];
 }>();
 
+const showTotalBalance = ref(false);
 const icon = { income: ArrowDownLeft, expense: ArrowUpRight, transfer: ArrowLeftRight };
 </script>
 
 <template>
     <Head title="Beranda" />
     <AppLayout title="Beranda" subtitle="Ringkasan uangmu hari ini, langsung dari transaksi dan dompet akunmu.">
-        <section class="relative overflow-hidden rounded-[28px] bg-[#194b40] p-7 text-white sm:p-10">
-            <div class="absolute -right-14 -top-20 h-72 w-72 rounded-full border border-white/10"></div>
-            <div class="relative flex flex-col justify-between gap-7 sm:flex-row sm:items-end">
+        <section class="relative overflow-hidden rounded-3xl bg-[#194b40] p-5 text-white sm:p-7">
+            <div class="absolute -right-14 -top-20 h-60 w-60 rounded-full border border-white/10"></div>
+            <div class="relative flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
                 <div>
                     <p class="text-sm font-semibold text-[#c5e8d3]">Total saldo {{ walletCount }} dompet</p>
-                    <p class="mt-3 break-words text-4xl font-bold tracking-tight sm:text-5xl">{{ rupiah(totalBalance) }}</p>
-                    <p class="mt-4 max-w-lg text-sm leading-relaxed text-[#c4dfd2]">Semua saldo dompet aktif milikmu dalam satu pandangan.</p>
+                    <div class="mt-1 flex items-center gap-2"><p class="break-words text-2xl font-bold tracking-tight sm:text-3xl">{{ showTotalBalance ? rupiah(totalBalance) : '••••••••' }}</p><button type="button" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#d7eee0] hover:bg-white/10" :aria-label="showTotalBalance ? 'Sembunyikan total saldo' : 'Tampilkan total saldo'" @click="showTotalBalance = !showTotalBalance"><EyeOff v-if="showTotalBalance" :size="18" aria-hidden="true" /><Eye v-else :size="18" aria-hidden="true" /></button></div>
+                    <p class="mt-2 max-w-lg text-sm leading-relaxed text-[#c4dfd2]">Semua saldo dompet aktif milikmu.</p>
                 </div>
                 <Link href="/transactions/create" class="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#205c4b] transition hover:bg-[#e8f5e8]">
                     <Plus :size="18" aria-hidden="true" /> Catat transaksi

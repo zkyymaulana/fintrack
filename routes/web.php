@@ -23,6 +23,7 @@ Route::middleware('guest:web')->group(function (): void {
 Route::middleware('auth:web')->group(function (): void {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::resource('wallets', WalletController::class)->except('show');
+    Route::post('/transactions/scan', [TransactionController::class, 'scan'])->name('transactions.scan');
     Route::resource('transactions', TransactionController::class)->except('show');
     Route::resource('budgets', BudgetController::class)->except('show');
     Route::get('/analytics', AnalyticsController::class)->name('analytics.index');
