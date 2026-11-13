@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import {
+    Bike,
     ChartNoAxesCombined,
     FileDown,
     LayoutDashboard,
@@ -24,6 +25,7 @@ const navigation = [
     { label: 'Beranda', icon: LayoutDashboard, href: '/dashboard' },
     { label: 'Transaksi', icon: ReceiptText, href: '/transactions' },
     { label: 'Dompet', icon: Wallet, href: '/wallets' },
+    { label: 'Motor', icon: Bike, href: '/motorcycles' },
     { label: 'Anggaran', icon: Target, href: '/budgets' },
     { label: 'Analitik', icon: ChartNoAxesCombined, href: '/analytics' },
     { label: 'Laporan', icon: FileDown, href: '/reports' },
@@ -105,7 +107,7 @@ const success = computed(() => (page.props.flash as { success?: string } | undef
         </div>
 
         <nav class="mobile-nav fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-[#dfe8df] bg-white/95 px-2 pt-2 backdrop-blur-md lg:hidden" aria-label="Navigasi ponsel">
-            <template v-for="item in [...navigation.slice(0, 4), navigation[6]]" :key="item.label">
+            <template v-for="item in [...navigation.slice(0, 4), navigation[7]]" :key="item.label">
                 <Link v-if="item.href" :href="item.href" :aria-current="isActive(item.href) ? 'page' : undefined" class="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[11px]" :class="isActive(item.href) ? 'bg-[#e9f4eb] font-bold text-[#1e6951]' : 'font-medium text-[#6c8072]'">
                     <component :is="item.icon" :size="20" aria-hidden="true" />
                     {{ item.label }}

@@ -12,3 +12,4 @@ Halaman Inertia yang dirender oleh route web Laravel.
 - [Budgets/](./Budgets/index.md)
 - [Transactions/](./Transactions/index.md)
 - [Wallets/](./Wallets/index.md)
+- [Motorcycles/](./Motorcycles/index.md)

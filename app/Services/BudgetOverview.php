@@ -13,9 +13,10 @@ class BudgetOverview
     {
         $period = $month->format('m-Y');
         $transactions = $user->transactions()
+            ->with('toWallet:id,wallet_type')
             ->whereBetween('date', [$month->startOfMonth()->toDateString(), $month->endOfMonth()->toDateString()])
             ->whereIn('type', ['expense', 'transfer'])
-            ->get(['category_id', 'type', 'amount', 'admin_fee', 'title', 'note']);
+            ->get(['category_id', 'to_wallet_id', 'type', 'amount', 'admin_fee', 'title', 'note']);
         $groups = $user->budgets()->with('category:id,name,type')->orderByDesc('id')->get()->groupBy('category_id');
         $rows = [];
         $totalLimit = '0.00';
@@ -33,7 +34,8 @@ class BudgetOverview
                         continue;
                     }
                     $text = strtolower(trim(($transaction->title ?? '').' '.($transaction->note ?? '')));
-                    if ((int) $transaction->category_id !== (int) $budget->category_id && ! $this->containsInvestmentKeyword($text)) {
+                    $toInvestmentWallet = $transaction->toWallet?->wallet_type === 'investment';
+                    if ((int) $transaction->category_id !== (int) $budget->category_id && ! $this->containsInvestmentKeyword($text) && ! $toInvestmentWallet) {
                         continue;
                     }
                 } elseif ($transaction->type !== 'expense' || (int) $transaction->category_id !== (int) $budget->category_id) {

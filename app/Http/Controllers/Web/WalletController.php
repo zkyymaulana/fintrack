@@ -17,9 +17,12 @@ class WalletController extends Controller
 {
     public function index(Request $request): Response
     {
-        $wallets = $request->user()->wallets()->orderBy('name')->get([
+        $wallets = $request->user()->wallets()->with('autoDeductionToWallet:id,name')->orderBy('name')->get([
             'id', 'name', 'wallet_type', 'balance', 'auto_deduction_enabled', 'auto_deduction_amount',
-            'auto_deduction_frequency', 'auto_deduction_next_run_on', 'auto_deduction_last_status',
+            'auto_deduction_type', 'auto_deduction_to_wallet_id', 'auto_deduction_title', 'auto_deduction_frequency', 'auto_deduction_next_run_on', 'auto_deduction_last_status',
+        ])->map(fn (Wallet $wallet): array => [
+            ...$wallet->only(['id', 'name', 'wallet_type', 'balance', 'auto_deduction_enabled', 'auto_deduction_amount', 'auto_deduction_type', 'auto_deduction_to_wallet_id', 'auto_deduction_title', 'auto_deduction_frequency', 'auto_deduction_next_run_on', 'auto_deduction_last_status']),
+            'auto_deduction_to_wallet_name' => $wallet->autoDeductionToWallet?->name,
         ]);
 
         return Inertia::render('Wallets/Index', [
@@ -28,11 +31,12 @@ class WalletController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         return Inertia::render('Wallets/Form', [
             'wallet' => null,
             'categories' => Category::where('type', 'expense')->orderBy('name')->get(['id', 'name', 'type']),
+            'destinationWallets' => $request->user()->wallets()->orderBy('name')->get(['id', 'name', 'wallet_type']),
         ]);
     }
 
@@ -50,11 +54,12 @@ class WalletController extends Controller
         return Inertia::render('Wallets/Form', [
             'wallet' => $request->user()->wallets()->findOrFail($wallet)->only([
                 'id', 'name', 'wallet_type', 'balance', 'auto_deduction_enabled', 'auto_deduction_amount',
-                'auto_deduction_category_id', 'auto_deduction_title', 'auto_deduction_note',
+                'auto_deduction_type', 'auto_deduction_to_wallet_id', 'auto_deduction_category_id', 'auto_deduction_title', 'auto_deduction_note',
                 'auto_deduction_frequency', 'auto_deduction_next_run_on', 'auto_deduction_last_run_on',
                 'auto_deduction_last_status',
             ]),
             'categories' => Category::where('type', 'expense')->orderBy('name')->get(['id', 'name', 'type']),
+            'destinationWallets' => $request->user()->wallets()->where('id', '!=', $wallet)->orderBy('name')->get(['id', 'name', 'wallet_type']),
         ]);
     }
 
@@ -71,6 +76,8 @@ class WalletController extends Controller
         $ownedWallet = $request->user()->wallets()->findOrFail($wallet);
         $ownedWallet->update([
             'auto_deduction_enabled' => false,
+            'auto_deduction_type' => 'expense',
+            'auto_deduction_to_wallet_id' => null,
             'auto_deduction_amount' => null,
             'auto_deduction_category_id' => null,
             'auto_deduction_title' => null,
@@ -82,7 +89,7 @@ class WalletController extends Controller
             'auto_deduction_last_status' => null,
         ]);
 
-        return redirect()->route('wallets.index')->with('success', 'Jadwal pengeluaran otomatis dibatalkan.');
+        return redirect()->route('wallets.index')->with('success', 'Jadwal transaksi otomatis dibatalkan.');
     }
 
     public function destroy(Request $request, string $wallet): RedirectResponse
@@ -90,7 +97,11 @@ class WalletController extends Controller
         $ownedWallet = $request->user()->wallets()->findOrFail($wallet);
         $used = $request->user()->transactions()
             ->where(fn ($query) => $query->where('wallet_id', $ownedWallet->id)->orWhere('to_wallet_id', $ownedWallet->id))
-            ->exists();
+            ->exists()
+            || $request->user()->wallets()
+                ->where('auto_deduction_enabled', true)
+                ->where('auto_deduction_to_wallet_id', $ownedWallet->id)
+                ->exists();
 
         if ($used) {
             throw ValidationException::withMessages(['wallet' => 'Dompet yang pernah digunakan dalam transaksi tidak dapat dihapus.']);
@@ -104,14 +115,17 @@ class WalletController extends Controller
     private function rules(Request $request): array
     {
         $scheduleEnabled = $request->boolean('auto_deduction_enabled');
+        $scheduleType = $request->input('auto_deduction_type', 'expense');
 
         return [
             'name' => ['required', 'string', 'max:255'],
             'wallet_type' => ['sometimes', 'required', Rule::in(['regular', 'investment'])],
             'balance' => ['required', 'numeric', 'min:0', 'decimal:0,2', 'max:9999999999999.99'],
             'auto_deduction_enabled' => ['sometimes', 'boolean'],
+            'auto_deduction_type' => ['sometimes', 'required', Rule::in(['expense', 'transfer'])],
             'auto_deduction_amount' => [Rule::requiredIf($scheduleEnabled), 'nullable', 'numeric', 'gt:0', 'decimal:0,2', 'max:9999999999999.99'],
-            'auto_deduction_category_id' => [Rule::requiredIf($scheduleEnabled), 'nullable', 'integer', Rule::exists('categories', 'id')->where('type', 'expense')],
+            'auto_deduction_category_id' => [Rule::requiredIf($scheduleEnabled && $scheduleType === 'expense'), Rule::prohibitedIf($scheduleEnabled && $scheduleType === 'transfer'), 'nullable', 'integer', Rule::exists('categories', 'id')->where('type', 'expense')],
+            'auto_deduction_to_wallet_id' => [Rule::requiredIf($scheduleEnabled && $scheduleType === 'transfer'), Rule::prohibitedIf($scheduleEnabled && $scheduleType !== 'transfer'), 'nullable', 'integer', Rule::exists('wallets', 'id')->where('user_id', $request->user()->id)->whereNull('deleted_at')],
             'auto_deduction_title' => [Rule::requiredIf($scheduleEnabled), 'nullable', 'string', 'max:255'],
             'auto_deduction_note' => ['nullable', 'string', 'max:5000'],
             'auto_deduction_frequency' => [Rule::requiredIf($scheduleEnabled), 'nullable', Rule::in(['daily', 'weekly', 'monthly'])],
@@ -126,14 +140,26 @@ class WalletController extends Controller
 
         if (! $enabled) {
             foreach ([
+                'auto_deduction_to_wallet_id',
                 'auto_deduction_amount', 'auto_deduction_category_id', 'auto_deduction_title',
                 'auto_deduction_note', 'auto_deduction_frequency', 'auto_deduction_next_run_on',
                 'auto_deduction_day_of_month', 'auto_deduction_last_run_on', 'auto_deduction_last_status',
             ] as $field) {
                 $data[$field] = null;
             }
+            $data['auto_deduction_type'] = 'expense';
 
             return $data;
+        }
+
+        $data['auto_deduction_type'] ??= 'expense';
+        if ($data['auto_deduction_type'] === 'transfer') {
+            if ($existing && (int) $data['auto_deduction_to_wallet_id'] === (int) $existing->id) {
+                throw ValidationException::withMessages(['auto_deduction_to_wallet_id' => 'Dompet tujuan harus berbeda dari dompet asal.']);
+            }
+            $data['auto_deduction_category_id'] = null;
+        } else {
+            $data['auto_deduction_to_wallet_id'] = null;
         }
 
         $nextRunOn = $data['auto_deduction_next_run_on'];

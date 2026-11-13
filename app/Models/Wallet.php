@@ -16,6 +16,8 @@ class Wallet extends Model
         'wallet_type',
         'balance',
         'auto_deduction_enabled',
+        'auto_deduction_type',
+        'auto_deduction_to_wallet_id',
         'auto_deduction_amount',
         'auto_deduction_category_id',
         'auto_deduction_title',
@@ -42,5 +44,10 @@ class Wallet extends Model
     public function transactions()
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    public function autoDeductionToWallet()
+    {
+        return $this->belongsTo(self::class, 'auto_deduction_to_wallet_id');
     }
 }

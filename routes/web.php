@@ -5,6 +5,9 @@ use App\Http\Controllers\Web\Auth\RegisteredUserController;
 use App\Http\Controllers\Web\Auth\SessionController;
 use App\Http\Controllers\Web\BudgetController;
 use App\Http\Controllers\Web\DashboardController;
+use App\Http\Controllers\Web\MotorcycleController;
+use App\Http\Controllers\Web\MotorcycleMaintenanceItemController;
+use App\Http\Controllers\Web\MotorcycleMaintenanceRecordController;
 use App\Http\Controllers\Web\ProfileController;
 use App\Http\Controllers\Web\ReportController;
 use App\Http\Controllers\Web\TransactionController;
@@ -23,6 +26,16 @@ Route::middleware('guest:web')->group(function (): void {
 Route::middleware('auth:web')->group(function (): void {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::resource('wallets', WalletController::class)->except('show');
+    Route::resource('motorcycles', MotorcycleController::class)->except('show');
+    Route::get('/motorcycles/{motorcycle}', [MotorcycleController::class, 'show'])->name('motorcycles.show');
+    Route::post('/motorcycles/{motorcycle}/odometer-readings', [MotorcycleController::class, 'updateOdometer'])->name('motorcycles.odometer.store');
+    Route::get('/motorcycles/{motorcycle}/maintenance-items/create', [MotorcycleMaintenanceItemController::class, 'create'])->name('motorcycles.maintenance-items.create');
+    Route::post('/motorcycles/{motorcycle}/maintenance-items', [MotorcycleMaintenanceItemController::class, 'store'])->name('motorcycles.maintenance-items.store');
+    Route::get('/motorcycles/{motorcycle}/maintenance-items/{item}/edit', [MotorcycleMaintenanceItemController::class, 'edit'])->name('motorcycles.maintenance-items.edit');
+    Route::put('/motorcycles/{motorcycle}/maintenance-items/{item}', [MotorcycleMaintenanceItemController::class, 'update'])->name('motorcycles.maintenance-items.update');
+    Route::delete('/motorcycles/{motorcycle}/maintenance-items/{item}', [MotorcycleMaintenanceItemController::class, 'destroy'])->name('motorcycles.maintenance-items.destroy');
+    Route::get('/motorcycles/{motorcycle}/maintenance-records/create', [MotorcycleMaintenanceRecordController::class, 'create'])->name('motorcycles.maintenance-records.create');
+    Route::post('/motorcycles/{motorcycle}/maintenance-records', [MotorcycleMaintenanceRecordController::class, 'store'])->name('motorcycles.maintenance-records.store');
     Route::post('/transactions/scan', [TransactionController::class, 'scan'])->name('transactions.scan');
     Route::resource('transactions', TransactionController::class)->except('show');
     Route::resource('budgets', BudgetController::class)->except('show');
