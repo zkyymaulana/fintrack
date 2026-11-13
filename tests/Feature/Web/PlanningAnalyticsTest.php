@@ -82,7 +82,7 @@ test('investment budgets count matching transfers while ordinary budgets count e
 
 test('monthly analytics separate transfers and keep other users out of summaries and charts', function () {
     planningTransaction($this->user, $this->wallet->id, $this->income->id, '2026-09-01', 'income', '500');
-    planningTransaction($this->user, $this->wallet->id, $this->expense->id, '2026-09-02', 'expense', '120', '7.50');
+    planningTransaction($this->user, $this->wallet->id, $this->expense->id, '2026-09-02', 'expense', '120', '7.50', 'Belanja kebutuhan');
     planningTransaction($this->user, $this->wallet->id, $this->expense->id, '2026-09-03', 'transfer', '30');
     planningTransaction($this->user, $this->wallet->id, $this->expense->id, '2026-08-20', 'expense', '25');
     planningTransaction($this->other, $this->otherWallet->id, $this->income->id, '2026-09-01', 'income', '999');
@@ -90,7 +90,9 @@ test('monthly analytics separate transfers and keep other users out of summaries
         ->component('Analytics')->where('start', '2026-09-01')->where('end', '2026-09-30')
         ->where('summary.income', '500.00')->where('summary.expense', '127.50')->where('summary.net', '372.50')
         ->has('trend', 6)->where('trend.4.expense', '25.00')->where('trend.5.income', '500.00')
-        ->has('distribution', 1)->where('distribution.0.amount', '127.50')->where('distribution.0.count', 1));
+        ->has('distribution', 1)->where('distribution.0.amount', '127.50')->where('distribution.0.count', 1)
+        ->has('distribution.0.transactions', 1)->where('distribution.0.transactions.0.title', 'Belanja kebutuhan')
+        ->where('distribution.0.transactions.0.amount', '127.50'));
 });
 
 test('custom range uses exact dates and rejects reversed or excessive periods', function () {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ArrowDownLeft, ArrowUpRight, CalendarRange, ChartNoAxesCombined, TrendingUp } from '@lucide/vue';
-import { computed, reactive } from 'vue';
+import { computed, nextTick, reactive, ref } from 'vue';
 import ExpenseDonut from '../Components/ExpenseDonut.vue';
 import TrendChart from '../Components/TrendChart.vue';
 import AppLayout from '../Layouts/AppLayout.vue';
@@ -20,9 +20,17 @@ const props = defineProps<{
 const page = usePage();
 const errors = computed(() => page.props.errors as Record<string, string> | undefined);
 const fields = reactive({ mode: props.mode, month: props.filters.month ?? new Date().toLocaleDateString('sv-SE').slice(0, 7), from: props.filters.from ?? props.start, to: props.filters.to ?? props.end });
+const selectedCategoryId = ref<number | null>(null);
+const detailPanel = ref<HTMLElement | null>(null);
+const selectedCategory = computed(() => props.distribution.find((item) => item.category_id === selectedCategoryId.value) ?? null);
+const categoryColors = ['#28785e', '#c47b43', '#597caf', '#9271aa', '#688c50', '#c56576'];
 const periodLabel = computed(() => props.start === props.end ? tanggal(props.start) : `${tanggal(props.start)} – ${tanggal(props.end)}`);
 function filter() {
     router.get('/analytics', fields.mode === 'month' ? { mode: 'month', month: fields.month } : { mode: 'range', from: fields.from, to: fields.to }, { preserveState: true, replace: true });
+}
+function selectCategory(categoryId: number) {
+    selectedCategoryId.value = categoryId;
+    nextTick(() => detailPanel.value?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' }));
 }
 </script>
 
@@ -44,6 +52,43 @@ function filter() {
 
         <section class="mt-7 rounded-3xl border border-[#e3ebe3] bg-white p-5 sm:p-7"><div class="mb-4"><h2 class="text-lg font-bold text-[#294538]">Tren pemasukan dan pengeluaran</h2><p class="mt-1 text-sm text-[#7a8b80]">{{ mode === 'month' ? 'Enam bulan hingga periode pilihan' : 'Bulan dalam rentang pilihan' }}. Transfer antar dompet tidak dihitung.</p></div><TrendChart :points="trend" :accessible-table="false" /><div class="mt-4 overflow-x-auto"><table class="w-full min-w-[480px] text-left text-sm"><caption class="mb-3 text-left font-bold text-[#294538]">Rincian tren per bulan</caption><thead><tr class="border-b border-[#e4ebe5] text-xs uppercase tracking-wider text-[#7b8b80]"><th class="py-3 pr-3" scope="col">Bulan</th><th class="py-3 pr-3 text-right" scope="col">Pemasukan</th><th class="py-3 text-right" scope="col">Pengeluaran</th></tr></thead><tbody><tr v-for="point in trend" :key="point.month" class="border-b border-[#edf0eb] last:border-0"><th class="py-3 pr-3 font-semibold" scope="row">{{ point.month }}</th><td class="py-3 pr-3 text-right text-[#28785e]">{{ rupiah(point.income) }}</td><td class="py-3 text-right text-[#aa5344]">{{ rupiah(point.expense) }}</td></tr></tbody></table></div></section>
 
-        <section class="mt-7 rounded-3xl border border-[#e3ebe3] bg-white p-5 sm:p-7"><div><h2 class="text-lg font-bold text-[#294538]">Pengeluaran per kategori</h2><p class="mt-1 text-sm text-[#7a8b80]">Kategori dengan pengeluaran terbesar tampil lebih dulu.</p></div><template v-if="distribution.length"><div class="mt-4 grid items-center gap-5 lg:grid-cols-[minmax(240px,1fr)_minmax(0,1.4fr)]"><ExpenseDonut :categories="distribution" :total="summary.expense" /><div class="min-w-0 overflow-x-auto"><table class="w-full min-w-[360px] text-left text-sm"><caption class="mb-3 text-left font-bold text-[#294538]">Rincian pengeluaran per kategori</caption><thead><tr class="border-b border-[#e4ebe5] text-xs uppercase tracking-wider text-[#7b8b80]"><th class="py-3 pr-3" scope="col">Kategori</th><th class="py-3 pr-3 text-right" scope="col">Jumlah</th><th class="py-3 text-right" scope="col">Bagian</th></tr></thead><tbody><tr v-for="item in distribution" :key="item.category_id" class="border-b border-[#edf0eb] last:border-0"><th class="py-3 pr-3 font-semibold" scope="row">{{ item.category_name }}<span class="block text-xs font-normal text-[#839187]">{{ item.count }} transaksi</span></th><td class="py-3 pr-3 text-right">{{ rupiah(item.amount) }}</td><td class="py-3 text-right font-semibold text-[#256958]">{{ item.percentage }}%</td></tr></tbody></table></div></div></template><div v-else class="flex flex-col items-center px-6 py-12 text-center"><ChartNoAxesCombined :size="34" class="mx-auto text-[#8caf97]" aria-hidden="true" /><p class="mt-4 font-bold text-[#294538]">Belum ada pengeluaran pada periode ini</p><p class="mt-2 text-sm text-[#7a8b80]">Pilih periode lain atau catat transaksi untuk melihat distribusi.</p></div></section>
+        <section class="mt-7 rounded-3xl border border-[#e3ebe3] bg-white p-5 sm:p-7">
+            <div><h2 class="text-lg font-bold text-[#294538]">Pengeluaran per kategori</h2><p class="mt-1 text-sm text-[#7a8b80]">Kategori dengan pengeluaran terbesar tampil lebih dulu. Pilih kategori untuk melihat transaksi.</p></div>
+            <template v-if="distribution.length">
+                <div class="mt-6 grid items-start gap-7 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.15fr)]">
+                    <div class="rounded-3xl bg-[#f7faf6] px-3 py-5 sm:px-5">
+                        <ExpenseDonut :categories="distribution" :total="summary.expense" @select="selectCategory" />
+                    </div>
+                    <div class="min-w-0">
+                        <div class="mb-3 flex items-baseline justify-between gap-3"><h3 class="font-bold text-[#294538]">Rincian kategori</h3><span class="text-xs text-[#839187]">{{ distribution.length }} kategori</span></div>
+                        <ul class="space-y-2">
+                            <li v-for="(item, index) in distribution" :key="item.category_id" class="overflow-hidden rounded-2xl border transition-colors" :class="selectedCategoryId === item.category_id ? 'border-[#78a995] bg-[#f4faf5] shadow-sm' : 'border-[#e6ece6] bg-white hover:border-[#bfd4c6]'">
+                                <button type="button" class="block min-h-[76px] w-full rounded-2xl px-4 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#28785e]" :aria-pressed="selectedCategoryId === item.category_id" @click="selectCategory(item.category_id)">
+                                    <span class="flex items-center justify-between gap-4">
+                                        <span class="flex min-w-0 items-center gap-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#edf4ee] text-xs font-bold text-[#527762]">{{ index + 1 }}</span><span class="min-w-0"><strong class="block truncate text-sm text-[#294538]">{{ item.category_name }}</strong><span class="mt-0.5 block text-xs text-[#839187]">{{ item.count }} transaksi</span></span></span>
+                                        <span class="shrink-0 text-right"><strong class="block text-sm text-[#294538]">{{ rupiah(item.amount) }}</strong><span class="mt-0.5 block text-xs font-semibold text-[#60766a]">{{ item.percentage }}% · Lihat transaksi</span></span>
+                                    </span>
+                                    <span class="mt-3 block h-1.5 overflow-hidden rounded-full bg-[#e9eee8]"><span class="block h-full rounded-full" :style="{ width: `${item.percentage}%`, backgroundColor: categoryColors[index % categoryColors.length] }"></span></span>
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <section v-if="selectedCategory" ref="detailPanel" class="mt-6 scroll-mt-6 rounded-3xl border border-[#cddfd2] bg-[#f7faf6] p-5 sm:p-6" aria-live="polite" :aria-label="`Detail transaksi kategori ${selectedCategory.category_name}`">
+                    <div class="flex flex-wrap items-start justify-between gap-4 border-b border-[#e1eae1] pb-4">
+                        <div><p class="text-xs font-semibold text-[#668071]">RINCIAN TRANSAKSI</p><h3 class="mt-1 text-xl font-bold text-[#294538]">{{ selectedCategory.category_name }}</h3><p class="mt-1 text-sm text-[#748579]">{{ selectedCategory.count }} transaksi · Total {{ rupiah(selectedCategory.amount) }} · {{ selectedCategory.percentage }}% dari pengeluaran</p></div>
+                        <span class="rounded-xl bg-white px-3 py-2 text-sm font-bold text-[#294538]">{{ selectedCategory.transactions.length }} catatan</span>
+                    </div>
+                    <ul v-if="selectedCategory.transactions.length" class="mt-1 divide-y divide-[#e4ebe5]">
+                        <li v-for="transaction in selectedCategory.transactions" :key="transaction.id" class="flex flex-wrap items-center justify-between gap-3 py-3">
+                            <span class="min-w-0"><strong class="block break-words text-sm font-semibold text-[#294538]">{{ transaction.title || 'Tanpa keterangan' }}</strong><span class="mt-1 block whitespace-pre-line break-words text-xs leading-relaxed text-[#748579]">{{ transaction.note || '-' }}</span><time class="mt-1 block text-xs text-[#748579]" :datetime="transaction.date">{{ tanggal(transaction.date) }}</time></span>
+                            <span class="shrink-0 text-sm font-bold text-[#aa5344]">{{ rupiah(transaction.amount) }}</span>
+                        </li>
+                    </ul>
+                    <p v-else class="py-5 text-sm text-[#748579]">Belum ada catatan transaksi untuk kategori ini.</p>
+                </section>
+            </template>
+            <div v-else class="flex flex-col items-center px-6 py-12 text-center"><ChartNoAxesCombined :size="34" class="mx-auto text-[#8caf97]" aria-hidden="true" /><p class="mt-4 font-bold text-[#294538]">Belum ada pengeluaran pada periode ini</p><p class="mt-2 text-sm text-[#7a8b80]">Pilih periode lain atau catat transaksi untuk melihat distribusi.</p></div>
+        </section>
     </AppLayout>
 </template>

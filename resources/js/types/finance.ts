@@ -35,4 +35,11 @@ export type Budget = {
 };
 
 export type TrendPoint = { month: string; income: string; expense: string };
-export type ExpenseCategory = { category_id: number; category_name: string; amount: string; count: number; percentage: number };
+export type ExpenseCategory = {
+    category_id: number;
+    category_name: string;
+    amount: string;
+    count: number;
+    percentage: number;
+    transactions: { id: number; title: string; note: string | null; date: string; amount: string }[];
+};

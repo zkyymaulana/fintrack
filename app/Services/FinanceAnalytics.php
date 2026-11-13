@@ -13,7 +13,9 @@ class FinanceAnalytics
         $transactions = $user->transactions()
             ->with('category:id,name')
             ->whereBetween('date', [$queryStart->toDateString(), $end->toDateString()])
-            ->get(['id', 'category_id', 'type', 'amount', 'admin_fee', 'date']);
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->get(['id', 'category_id', 'type', 'title', 'amount', 'admin_fee', 'date', 'note']);
 
         $income = '0.00';
         $expense = '0.00';
@@ -48,10 +50,18 @@ class FinanceAnalytics
                         'category_name' => $transaction->category?->name ?? 'Kategori tidak tersedia',
                         'amount' => '0.00',
                         'count' => 0,
+                        'transactions' => [],
                     ];
                 }
                 $distribution[$categoryId]['amount'] = bcadd($distribution[$categoryId]['amount'], $value, 2);
                 $distribution[$categoryId]['count']++;
+                $distribution[$categoryId]['transactions'][] = [
+                    'id' => $transaction->id,
+                    'title' => $transaction->title,
+                    'note' => $transaction->note,
+                    'date' => $transaction->date,
+                    'amount' => $value,
+                ];
             }
         }
 
