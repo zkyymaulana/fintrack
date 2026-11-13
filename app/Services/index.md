@@ -7,3 +7,4 @@ Laporan web menggunakan [WebReportData.php](./WebReportData.php) untuk memuat tr
 - [WebTransactionService.php](./WebTransactionService.php) — perubahan saldo atomik ketika transaksi ditambah, diubah, atau dihapus.
 - [BudgetOverview.php](./BudgetOverview.php) — realisasi dan status anggaran bulanan dengan nilai bawaan dari periode lain.
 - [FinanceAnalytics.php](./FinanceAnalytics.php) — ringkasan, tren, dan distribusi transaksi untuk periode pilihan.
+- [WalletScheduleProcessor.php](./WalletScheduleProcessor.php) - memproses potongan dompet terjadwal sebagai transaksi pengeluaran.

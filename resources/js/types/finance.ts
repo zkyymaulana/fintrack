@@ -18,7 +18,21 @@ export type Transaction = {
     to_wallet_name: string | null;
 };
 
-export type Wallet = { id: number; name: string; wallet_type: 'regular' | 'investment'; balance: string };
+export type Wallet = {
+    id: number;
+    name: string;
+    wallet_type: 'regular' | 'investment';
+    balance: string;
+    auto_deduction_enabled?: boolean;
+    auto_deduction_amount?: string | null;
+    auto_deduction_category_id?: number | null;
+    auto_deduction_title?: string | null;
+    auto_deduction_note?: string | null;
+    auto_deduction_frequency?: 'daily' | 'weekly' | 'monthly' | null;
+    auto_deduction_next_run_on?: string | null;
+    auto_deduction_last_run_on?: string | null;
+    auto_deduction_last_status?: 'charged' | 'insufficient_balance' | 'category_missing' | null;
+};
 export type Option = { id: number; name: string; wallet_type?: 'regular' | 'investment' };
 export type Category = Option & { type: 'income' | 'expense' };
 

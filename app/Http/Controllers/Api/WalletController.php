@@ -10,7 +10,9 @@ class WalletController extends Controller
     //
     public function index(Request $request)
     {
-        $wallets = $request->user()->wallets()->latest()->get();
+        $wallets = $request->user()->wallets()->latest()->get([
+            'id', 'user_id', 'name', 'wallet_type', 'balance', 'created_at', 'updated_at', 'deleted_at',
+        ]);
 
         $totalBalance = $wallets->sum('balance');
 
@@ -20,7 +22,7 @@ class WalletController extends Controller
             'data' => [
                 'wallets' => $wallets,
                 'total_balance' => $totalBalance,
-            ]
+            ],
         ], 200);
     }
 
@@ -41,7 +43,7 @@ class WalletController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Wallet created successfully',
-            'data' => $wallet
+            'data' => $wallet->only(['id', 'user_id', 'name', 'wallet_type', 'balance', 'created_at', 'updated_at', 'deleted_at']),
         ], 201);
     }
 
@@ -49,7 +51,7 @@ class WalletController extends Controller
     {
         $wallet = $request->user()->wallets()->find($id);
 
-        if (!$wallet) {
+        if (! $wallet) {
             return response()->json([
                 'success' => false,
                 'message' => 'Wallet not found',
@@ -67,7 +69,7 @@ class WalletController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Wallet updated successfully',
-            'data' => $wallet
+            'data' => $wallet->only(['id', 'user_id', 'name', 'wallet_type', 'balance', 'created_at', 'updated_at', 'deleted_at']),
         ], 200);
     }
 
@@ -75,7 +77,7 @@ class WalletController extends Controller
     {
         $wallet = $request->user()->wallets()->find($id);
 
-        if (!$wallet) {
+        if (! $wallet) {
             return response()->json([
                 'success' => false,
                 'message' => 'Wallet not found',

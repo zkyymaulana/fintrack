@@ -22,3 +22,4 @@ Indeks isi folder `database/migrations` pada backend FinTrack.
 - [2026_06_26_034915_add_fcm_token_to_users_table.php](./2026_06_26_034915_add_fcm_token_to_users_table.php)
 - [2026_09_01_122307_create_chat_messages_table.php](./2026_09_01_122307_create_chat_messages_table.php)
 - [2026_11_01_000000_add_wallet_type_to_wallets_table.php](./2026_11_01_000000_add_wallet_type_to_wallets_table.php)
+- [2026_11_13_000000_add_wallet_auto_deduction_schedule.php](./2026_11_13_000000_add_wallet_auto_deduction_schedule.php)

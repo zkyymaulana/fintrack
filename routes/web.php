@@ -26,6 +26,7 @@ Route::middleware('auth:web')->group(function (): void {
     Route::post('/transactions/scan', [TransactionController::class, 'scan'])->name('transactions.scan');
     Route::resource('transactions', TransactionController::class)->except('show');
     Route::resource('budgets', BudgetController::class)->except('show');
+    Route::delete('/wallets/{wallet}/schedule', [WalletController::class, 'destroySchedule'])->name('wallets.schedule.destroy');
     Route::get('/analytics', AnalyticsController::class)->name('analytics.index');
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/download/{format}', [ReportController::class, 'download'])->name('reports.download');
